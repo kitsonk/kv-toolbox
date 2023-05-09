@@ -1,4 +1,4 @@
-import { assert, assertEquals, setup, teardown } from "./test_util.ts";
+import { assert, assertEquals, setup, teardown } from "./_test_util.ts";
 
 import { keys } from "./keys.ts";
 

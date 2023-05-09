@@ -4,7 +4,7 @@ import {
   setup,
   teardown,
   timingSafeEqual,
-} from "./test_util.ts";
+} from "./_test_util.ts";
 
 import { get, remove, set } from "./blob.ts";
 import { keys } from "./keys.ts";
