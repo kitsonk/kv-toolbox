@@ -41,3 +41,11 @@ APIs for dealing with Deno KV keys.
 Similar to `Deno.Kv.prototype.list()`, in that is takes a selector, but instead
 of returning an async iterator of matched values, it resolves with an array of
 matching keys.
+
+### `unique()`
+
+Resolves with an array of unique sub keys/prefixes for the provided prefix.
+
+This is useful when storing keys and values in a hierarchical/tree view, where
+you are retrieving a list and you want to know all the unique _descendents_ of a
+key in order to be able to enumerate them.
