@@ -1,3 +1,4 @@
+import { batchedAtomic, type BatchedAtomicOperation } from "./batchedAtomic.ts";
 import { keys } from "./keys.ts";
 
 const BATCH_SIZE = 10;
@@ -65,11 +66,11 @@ async function asUint8Array(
 }
 
 function deleteKeys(
-  operation: Deno.AtomicOperation,
+  operation: BatchedAtomicOperation,
   key: Deno.KvKey,
   count: number,
   length: number,
-): Deno.AtomicOperation {
+): BatchedAtomicOperation {
   while (++count <= length) {
     operation.delete([...key, BLOB_KEY, count]);
   }
@@ -77,11 +78,11 @@ function deleteKeys(
 }
 
 function writeArrayBuffer(
-  operation: Deno.AtomicOperation,
+  operation: BatchedAtomicOperation,
   key: Deno.KvKey,
   blob: ArrayBufferLike,
   start = 0,
-): [count: number, operation: Deno.AtomicOperation] {
+): [count: number, operation: BatchedAtomicOperation] {
   const buffer = new Uint8Array(blob);
   let offset = 0;
   let count = start;
@@ -95,10 +96,10 @@ function writeArrayBuffer(
 }
 
 async function writeStream(
-  operation: Deno.AtomicOperation,
+  operation: BatchedAtomicOperation,
   key: Deno.KvKey,
   stream: ReadableStream<Uint8Array>,
-): Promise<[count: number, operation: Deno.AtomicOperation]> {
+): Promise<[count: number, operation: BatchedAtomicOperation]> {
   let start = 0;
   for await (const chunk of stream) {
     [start, operation] = writeArrayBuffer(operation, key, chunk, start);
@@ -221,7 +222,7 @@ export async function set(
   blob: ArrayBufferLike | ReadableStream<Uint8Array>,
 ): Promise<void> {
   const items = await keys(kv, { prefix: [...key, BLOB_KEY] });
-  let operation: Deno.AtomicOperation = kv.atomic();
+  let operation = batchedAtomic(kv);
   let count;
   if (blob instanceof ReadableStream) {
     [count, operation] = await writeStream(operation, key, blob);

@@ -2,6 +2,7 @@ import { assert } from "https://deno.land/std@0.186.0/testing/asserts.ts";
 export {
   assert,
   assertEquals,
+  assertNotEquals,
 } from "https://deno.land/std@0.186.0/testing/asserts.ts";
 export { timingSafeEqual } from "https://deno.land/std@0.186.0/crypto/timing_safe_equal.ts";
 
@@ -15,7 +16,7 @@ export async function setup(): Promise<Deno.Kv> {
 
 export async function teardown() {
   assert(kv);
-  await kv.close();
+  kv.close();
   assert(path);
   await Deno.remove(path);
 }

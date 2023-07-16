@@ -2,6 +2,19 @@
 
 A set of tools for working with Deno KV.
 
+## Batched Atomic
+
+A set of APIs for dealing with the limitation of atomic commit sized in Deno KV,
+where currently only 10 operations operations can be part of a commit.
+
+### `batchedAtomic()`
+
+Similar to `Deno.Kv#atomic()`, but will batch individual transactions across as
+many atomic operations as necessary.
+
+The `commit()` method will return a promise which resolves with an array of
+results based on how many batches the operations was broken up into.
+
 ## Blob
 
 A set of APIs for storing arbitrarily sized blobs in Deno KV. Currently Deno KV
