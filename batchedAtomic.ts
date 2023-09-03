@@ -87,8 +87,8 @@ export class BatchedAtomicOperation {
    * Add to the operation a mutation that sets the value of the specified key
    * to the specified value if all checks pass during the commit.
    */
-  set(key: Deno.KvKey, value: unknown): this {
-    return this.#enqueue("set", [key, value]);
+  set(key: Deno.KvKey, value: unknown, options?: { expireIn?: number }): this {
+    return this.#enqueue("set", [key, value, options]);
   }
 
   /**
