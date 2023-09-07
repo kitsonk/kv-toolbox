@@ -86,9 +86,16 @@ export class BatchedAtomicOperation {
   /**
    * Add to the operation a mutation that sets the value of the specified key
    * to the specified value if all checks pass during the commit.
+   *
+   * Optionally an `expireIn` option can be specified to set a time-to-live
+   * (TTL) for the key. The TTL is specified in milliseconds, and the key will
+   * be deleted from the database at earliest after the specified number of
+   * milliseconds have elapsed. Once the specified duration has passed, the
+   * key may still be visible for some additional time. If the `expireIn`
+   * option is not specified, the key will not expire.
    */
-  set(key: Deno.KvKey, value: unknown): this {
-    return this.#enqueue("set", [key, value]);
+  set(key: Deno.KvKey, value: unknown, options?: { expireIn?: number }): this {
+    return this.#enqueue("set", [key, value, options]);
   }
 
   /**

@@ -82,6 +82,7 @@ function writeArrayBuffer(
   key: Deno.KvKey,
   blob: ArrayBufferLike,
   start = 0,
+  options?: { expireIn?: number },
 ): [count: number, operation: BatchedAtomicOperation] {
   const buffer = new Uint8Array(blob);
   let offset = 0;
@@ -89,7 +90,7 @@ function writeArrayBuffer(
   while (buffer.byteLength > offset) {
     count++;
     const chunk = buffer.subarray(offset, offset + CHUNK_SIZE);
-    operation.set([...key, BLOB_KEY, count], chunk);
+    operation.set([...key, BLOB_KEY, count], chunk, options);
     offset += CHUNK_SIZE;
   }
   return [count, operation];
@@ -99,10 +100,17 @@ async function writeStream(
   operation: BatchedAtomicOperation,
   key: Deno.KvKey,
   stream: ReadableStream<Uint8Array>,
+  options?: { expireIn?: number },
 ): Promise<[count: number, operation: BatchedAtomicOperation]> {
   let start = 0;
   for await (const chunk of stream) {
-    [start, operation] = writeArrayBuffer(operation, key, chunk, start);
+    [start, operation] = writeArrayBuffer(
+      operation,
+      key,
+      chunk,
+      start,
+      options,
+    );
   }
   return [start, operation];
 }
@@ -204,6 +212,13 @@ export function get(
  * The function chunks up the blob into parts which deno be stored in Deno KV
  * and should be retrieved back out using the {@linkcode get} function.
  *
+ * Optionally an `expireIn` option can be specified to set a time-to-live
+ * (TTL) for the key. The TTL is specified in milliseconds, and the key will
+ * be deleted from the database at earliest after the specified number of
+ * milliseconds have elapsed. Once the specified duration has passed, the
+ * key may still be visible for some additional time. If the `expireIn`
+ * option is not specified, the key will not expire.
+ *
  * ### Example
  *
  * ```ts
@@ -220,14 +235,15 @@ export async function set(
   kv: Deno.Kv,
   key: Deno.KvKey,
   blob: ArrayBufferLike | ReadableStream<Uint8Array>,
+  options?: { expireIn?: number },
 ): Promise<void> {
   const items = await keys(kv, { prefix: [...key, BLOB_KEY] });
   let operation = batchedAtomic(kv);
   let count;
   if (blob instanceof ReadableStream) {
-    [count, operation] = await writeStream(operation, key, blob);
+    [count, operation] = await writeStream(operation, key, blob, options);
   } else {
-    [count, operation] = writeArrayBuffer(operation, key, blob);
+    [count, operation] = writeArrayBuffer(operation, key, blob, 0, options);
   }
   operation = deleteKeys(operation, key, count, items.length);
   await operation.commit();

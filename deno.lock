@@ -2,6 +2,7 @@
   "version": "2",
   "remote": {
     "https://deno.land/std@0.186.0/_util/asserts.ts": "178dfc49a464aee693a7e285567b3d0b555dc805ff490505a8aae34f9cfb1462",
+    "https://deno.land/std@0.186.0/async/delay.ts": "73aa04cec034c84fc748c7be49bb15cac3dd43a57174bfdb7a4aec22c248f0dd",
     "https://deno.land/std@0.186.0/crypto/timing_safe_equal.ts": "0fae34ee02264f309ae0b6e54e9746a7aba3996e5454903ed106967a7a9ef665",
     "https://deno.land/std@0.186.0/fmt/colors.ts": "d67e3cd9f472535241a8e410d33423980bec45047e343577554d3356e1f0ef4e",
     "https://deno.land/std@0.186.0/testing/_diff.ts": "1a3c044aedf77647d6cac86b798c6417603361b66b54c53331b312caeb447aea",
