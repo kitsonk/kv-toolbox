@@ -5,7 +5,7 @@ const BATCH_SIZE = 10;
 const CHUNK_SIZE = 63_000;
 const BLOB_KEY = "__kv_toolbox_blob__";
 
-function asSteam(
+function asStream(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined },
@@ -201,7 +201,7 @@ export function get(
   } = {},
 ): ReadableStream<Uint8Array> | Promise<Uint8Array | null> {
   return options.stream
-    ? asSteam(kv, key, options)
+    ? asStream(kv, key, options)
     : asUint8Array(kv, key, options);
 }
 
