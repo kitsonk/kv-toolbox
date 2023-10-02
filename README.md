@@ -62,3 +62,13 @@ Resolves with an array of unique sub keys/prefixes for the provided prefix.
 This is useful when storing keys and values in a hierarchical/tree view, where
 you are retrieving a list and you want to know all the unique _descendents_ of a
 key in order to be able to enumerate them.
+
+### `uniqueCount()`
+
+Resolves with an array of values which contain the unique sub keys/prefixes for
+the provided prefix along with a count of how many keys there are.
+
+This is useful when storing keys and values in a hierarchical/tree view, where
+you are retrieving a list and you want to know all the unique _descendents_ of a
+key (and the count of keys that match that prefix) in order to be able to
+enumerate them or provide information about them.
