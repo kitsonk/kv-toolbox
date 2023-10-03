@@ -9,14 +9,18 @@ function addIfUnique(set: Set<Deno.KvKeyPart>, item: Uint8Array) {
   set.add(item);
 }
 
-function addOrIncrement(map: Map<Deno.KvKeyPart, number>, item: Uint8Array) {
+function addOrIncrement(
+  map: Map<Deno.KvKeyPart, number>,
+  item: Uint8Array,
+  increment: boolean,
+) {
   for (const [k, v] of map) {
     if (ArrayBuffer.isView(k) && timingSafeEqual(k, item)) {
-      map.set(k, v + 1);
+      map.set(k, increment ? v + 1 : v);
       return;
     }
   }
-  map.set(item, 1);
+  map.set(item, increment ? 1 : 0);
 }
 
 /** Return an array of keys that match the `selector` in the target `kv`
@@ -97,7 +101,9 @@ export async function unique(
 }
 
 /** Resolves with an array of unique sub keys/prefixes for the provided prefix
- * along with the number of sub keys that match that prefix.
+ * along with the number of sub keys that match that prefix. The `count`
+ * represents the number of sub keys, a value of `0` indicates that only the
+ * exact key exists with no sub keys.
  *
  * This is useful when storing keys and values in a hierarchical/tree view,
  * where you are retrieving a list including counts and you want to know all the
@@ -119,7 +125,7 @@ export async function unique(
  *
  * const kv = await Deno.openKv();
  * console.log(await uniqueCount(kv, ["a"]));
- * // { key: ["a", "b"], count: 2 }
+ * // { key: ["a", "b"], count: 1 }
  * // { key: ["a", "d"], count: 2 }
  * await kv.close();
  * ```
@@ -140,9 +146,14 @@ export async function uniqueCount(
     }
     const part = key[prefixLength];
     if (ArrayBuffer.isView(part)) {
-      addOrIncrement(prefixCounts, part);
+      addOrIncrement(prefixCounts, part, key.length > (prefixLength + 1));
     } else {
-      prefixCounts.set(part, (prefixCounts.get(part) ?? 0) + 1);
+      if (!prefixCounts.has(part)) {
+        prefixCounts.set(part, 0);
+      }
+      if (key.length > (prefixLength + 1)) {
+        prefixCounts.set(part, prefixCounts.get(part)! + 1);
+      }
     }
   }
   return [...prefixCounts].map(([part, count]) => ({

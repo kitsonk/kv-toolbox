@@ -73,6 +73,7 @@ Deno.test({
       .set(["a", "b"], "b")
       .set(["a", "b", "c"], "c")
       .set(["a", "d", "f", "g"], "g")
+      .set(["a", "h"], "h")
       .set(["e"], "e")
       .commit();
     assert(res.ok);
@@ -80,8 +81,9 @@ Deno.test({
     const actual = await uniqueCount(kv, ["a"]);
 
     assertEquals(actual, [
-      { key: ["a", "b"], count: 2 },
+      { key: ["a", "b"], count: 1 },
       { key: ["a", "d"], count: 1 },
+      { key: ["a", "h"], count: 0 },
     ]);
     return teardown();
   },
@@ -103,7 +105,7 @@ Deno.test({
     const actual = await uniqueCount(kv, ["a"]);
 
     assertEquals(actual, [
-      { key: ["a", new Uint8Array([2, 3, 4])], count: 2 },
+      { key: ["a", new Uint8Array([2, 3, 4])], count: 1 },
       { key: ["a", new Uint8Array([4, 5, 6])], count: 1 },
     ]);
     return teardown();
