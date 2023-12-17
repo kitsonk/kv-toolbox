@@ -49,6 +49,17 @@ in a noop.
 
 APIs for dealing with Deno KV keys.
 
+### `equals()`
+
+Compares the quality of two `Deno.KvKey`s, returning `true` if they are equal
+and `false` if they are not. This is more specialized than other forms of deeply
+equal comparison.
+
+### `startsWith()`
+
+Determines if the `key` starts with the `prefix` provided, returning `true` if
+it does, otherwise `false`.
+
 ### `keys()`
 
 Similar to `Deno.Kv.prototype.list()`, in that is takes a selector, but instead

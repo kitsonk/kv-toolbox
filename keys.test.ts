@@ -1,6 +1,6 @@
 import { assert, assertEquals, setup, teardown } from "./_test_util.ts";
 
-import { keys, unique, uniqueCount } from "./keys.ts";
+import { equals, keys, startsWith, unique, uniqueCount } from "./keys.ts";
 
 Deno.test({
   name: "keys - returns a list of keys",
@@ -109,5 +109,57 @@ Deno.test({
       { key: ["a", new Uint8Array([4, 5, 6])], count: 1 },
     ]);
     return teardown();
+  },
+});
+
+Deno.test({
+  name: "equals",
+  fn() {
+    assert(equals(["a"], ["a"]));
+    assert(!equals(["a"], ["b"]));
+    assert(equals([1], [1]));
+    assert(!equals([1], ["1"]));
+    assert(
+      equals(["a", 1, 1n, true, new Uint8Array([1, 2, 3])], [
+        "a",
+        1,
+        1n,
+        true,
+        new Uint8Array([1, 2, 3]),
+      ]),
+    );
+    assert(!equals(["a", 1n, 1, true], ["a", 1, 1n, true]));
+    assert(
+      !equals(["a", 1, 1n, true, new Uint8Array([3, 2, 1])], [
+        "a",
+        1,
+        1n,
+        true,
+        new Uint8Array([1, 2, 3]),
+      ]),
+    );
+  },
+});
+
+Deno.test({
+  name: "startsWith",
+  fn() {
+    assert(startsWith(["a", "b"], ["a"]));
+    assert(startsWith(["a", "b"], ["a", "b"]));
+    assert(!startsWith(["a"], ["a", "b"]));
+    assert(
+      startsWith(["a", new Uint8Array([1, 2, 3]), 1, 1n, true], [
+        "a",
+        new Uint8Array([1, 2, 3]),
+      ]),
+    );
+    assert(
+      !startsWith(["a", new Uint8Array([1, 2, 3]), 1, 1n, true], [
+        "a",
+        new Uint8Array([1, 2, 3]),
+        1,
+        2n,
+      ]),
+    );
   },
 });

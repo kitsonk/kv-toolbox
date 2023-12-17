@@ -23,13 +23,71 @@ function addOrIncrement(
   map.set(item, increment ? 1 : 0);
 }
 
+/** Determines if one {@linkcode Deno.KvKey} equals another. This is more
+ * focused than a deeply equals comparison and compares key parts that are
+ * `Uint8Array` in a way that avoids potential code exploits.
+ *
+ * ### Example
+ *
+ * ```ts
+ * import { equals } from "https://deno.land/x/kv_toolbox/keys.ts";
+ *
+ * const keyA = ["a", "b"];
+ * const keyB = ["a", "b"];
+ * if (equals(keyA, keyB)) {
+ *   console.log("keys match");
+ * }
+ * ```
+ */
+export function equals(a: Deno.KvKey, b: Deno.KvKey): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i++) {
+    const partA = a[i];
+    const partB = b[i];
+    if (ArrayBuffer.isView(partA)) {
+      if (!ArrayBuffer.isView(partB)) {
+        return false;
+      }
+      if (!timingSafeEqual(partA, partB)) {
+        return false;
+      }
+    } else if (partA !== partB) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Determines if one {@linkcode Deno.KvKey} matches the prefix of another.
+ *
+ * ### Example
+ *
+ * ```ts
+ * import { startsWith } from "https://deno.land/x/kv_toolbox/keys.ts";
+ *
+ * const key = ["a", "b"];
+ * const prefix = ["a"];
+ * if (equals(key, prefix)) {
+ *   console.log("key starts with prefix");
+ * }
+ * ```
+ */
+export function startsWith(key: Deno.KvKey, prefix: Deno.KvKey): boolean {
+  if (prefix.length > key.length) {
+    return false;
+  }
+  return equals(prefix, key.slice(0, prefix.length));
+}
+
 /** Return an array of keys that match the `selector` in the target `kv`
  * store.
  *
  * ### Example
  *
  * ```ts
- * import { keys } from "https://deno.land/x/kv-tools/keys.ts";
+ * import { keys } from "https://deno.land/x/kv_toolbox/keys.ts";
  *
  * const kv = await Deno.openKv();
  * console.log(await keys(kv, { prefix: ["hello"] }));
@@ -67,7 +125,7 @@ export async function keys(
  * And you would get the following results when using `unique()`:
  *
  * ```ts
- * import { unique } from "https://deno.land/x/kv-tools/keys.ts";
+ * import { unique } from "https://deno.land/x/kv_toolbox/keys.ts";
  *
  * const kv = await Deno.openKv();
  * console.log(await unique(kv, ["a"]));
@@ -121,7 +179,7 @@ export async function unique(
  * And you would get the following results when using `unique()`:
  *
  * ```ts
- * import { uniqueCount } from "https://deno.land/x/kv-tools/keys.ts";
+ * import { uniqueCount } from "https://deno.land/x/kv_toolbox/keys.ts";
  *
  * const kv = await Deno.openKv();
  * console.log(await uniqueCount(kv, ["a"]));
