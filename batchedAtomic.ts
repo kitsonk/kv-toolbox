@@ -178,6 +178,9 @@ export class BatchedAtomicOperation {
  *
  * By default, the batch size is `10` but can be supplied in the `options`
  * property of `batchSize`. */
-export function batchedAtomic(kv: Deno.Kv, options?: { batchSize?: number }) {
+export function batchedAtomic(
+  kv: Deno.Kv,
+  options?: { batchSize?: number },
+): BatchedAtomicOperation {
   return new BatchedAtomicOperation(kv, options);
 }
