@@ -1,4 +1,11 @@
 {
+  "name": "@kitsonk/kv_toolbox",
+  "version": "0.6.0",
+  "exports": {
+    "./batchedAtomic": "./batchedAtomic.ts",
+    "./blob": "./blob.ts",
+    "./keys": "./keys.ts"
+  },
   "tasks": {
     "test": "deno test --allow-read --allow-write --unstable"
   },
