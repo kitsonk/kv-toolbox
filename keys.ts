@@ -1,3 +1,32 @@
+/**
+ * APIs for dealing with Deno KV keys.
+ *
+ * {@linkcode equals} compares if two {@linkcode Deno.KvKey}s are equal. Because
+ * key parts can be an {@linkcode Uint8Array} they need to be compared deeply
+ * in a way that avoids security exploits.
+ *
+ * {@linkcode keys} is like Deno KV `.list()` except instead of returning an
+ * async iterator of entries, it return an array of {@linkcode Deno.KvKey}s.
+ *
+ * {@linkcode startsWith} determines if the `key` starts with the `prefix`
+ * provided, returning `true` if does, otherwise `false`.
+ *
+ * {@linkcode unique} resolves with an array of unique sub keys/prefixes for the
+ * provided prefix. This is useful when storing keys and values in a
+ * hierarchical/tree view, where you are retrieving a list and you want to know
+ * all the unique _descendants_ of a key in order to be able to enumerate them.
+ *
+ * {@linkcode uniqueCount} resolves with an array of values which contain the
+ * unique sub keys/prefixes for the provided prefix along with a count of how
+ * many keys there are. This is useful when storing keys and values in a
+ * hierarchical/tree view, where you are retrieving a list and you want to know
+ * all the unique _descendants_ of a key (and the count of keys that match that
+ * prefix) in order to be able to enumerate them or provide information about
+ * them.
+ *
+ * @module
+ */
+
 import { timingSafeEqual } from "https://deno.land/std@0.203.0/crypto/timing_safe_equal.ts";
 
 function addIfUnique(set: Set<Deno.KvKeyPart>, item: Uint8Array) {

@@ -1,3 +1,13 @@
+/**
+ * A set of APIs for storing arbitrarily sized blobs in Deno KV. Currently Deno
+ * KV has a limit of key values being 64k. The {@linkcode set} function breaks
+ * down a blob into chunks and manages sub-keys to store the complete value. The
+ * {@linkcode get} function reverses that process, and {@linkcode remove}
+ * function will delete the key, sub-keys and values.
+ *
+ * @module
+ */
+
 import { batchedAtomic, type BatchedAtomicOperation } from "./batchedAtomic.ts";
 import { keys } from "./keys.ts";
 

@@ -20,7 +20,8 @@ results based on how many batches the operations was broken up into.
 A set of APIs for storing arbitrarily sized blobs in Deno KV. Currently Deno KV
 has a limit of key values being 64k. The `set()` function breaks down a blob
 into chunks and manages sub-keys to store the complete value. The `get()`
-function reverses that process.
+function reverses that process, and `remove()` will delete the key, sub-keys and
+values.
 
 ### `set()`
 
@@ -71,7 +72,7 @@ matching keys.
 Resolves with an array of unique sub keys/prefixes for the provided prefix.
 
 This is useful when storing keys and values in a hierarchical/tree view, where
-you are retrieving a list and you want to know all the unique _descendents_ of a
+you are retrieving a list and you want to know all the unique _descendants_ of a
 key in order to be able to enumerate them.
 
 ### `uniqueCount()`
@@ -80,6 +81,6 @@ Resolves with an array of values which contain the unique sub keys/prefixes for
 the provided prefix along with a count of how many keys there are.
 
 This is useful when storing keys and values in a hierarchical/tree view, where
-you are retrieving a list and you want to know all the unique _descendents_ of a
+you are retrieving a list and you want to know all the unique _descendants_ of a
 key (and the count of keys that match that prefix) in order to be able to
 enumerate them or provide information about them.
