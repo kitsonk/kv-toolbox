@@ -7,7 +7,7 @@
     "./keys": "./keys.ts"
   },
   "tasks": {
-    "test": "deno test --allow-read --allow-write --unstable"
+    "test": "deno test --allow-read --allow-write --unstable-kv"
   },
   "lock": false
 }
