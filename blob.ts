@@ -8,7 +8,10 @@
  * @module
  */
 
-import { batchedAtomic, type BatchedAtomicOperation } from "./batchedAtomic.ts";
+import {
+  batchedAtomic,
+  type BatchedAtomicOperation,
+} from "./batched_atomic.ts";
 import { keys } from "./keys.ts";
 
 const BATCH_SIZE = 10;

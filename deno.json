@@ -1,8 +1,8 @@
 {
-  "name": "@kitsonk/kv_toolbox",
+  "name": "@kitsonk/kv-toolbox",
   "version": "0.6.1",
   "exports": {
-    "./batchedAtomic": "./batchedAtomic.ts",
+    "./batched_atomic": "./batched_atomic.ts",
     "./blob": "./blob.ts",
     "./keys": "./keys.ts"
   },

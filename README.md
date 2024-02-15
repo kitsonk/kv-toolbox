@@ -84,3 +84,9 @@ This is useful when storing keys and values in a hierarchical/tree view, where
 you are retrieving a list and you want to know all the unique _descendants_ of a
 key (and the count of keys that match that prefix) in order to be able to
 enumerate them or provide information about them.
+
+---
+
+Copyright 2023 - 2024 Kitson P. Kelly - All rights reserved.
+
+MIT License.

@@ -7,7 +7,7 @@ import {
   teardown,
 } from "./_test_util.ts";
 
-import { batchedAtomic } from "./batchedAtomic.ts";
+import { batchedAtomic } from "./batched_atomic.ts";
 
 Deno.test({
   name: "batched atomic handles checks",
