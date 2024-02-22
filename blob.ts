@@ -8,15 +8,11 @@
  * @module
  */
 
-import {
-  batchedAtomic,
-  type BatchedAtomicOperation,
-} from "./batched_atomic.ts";
+import { batchedAtomic } from "./batched_atomic.ts";
+import { BLOB_KEY, CHUNK_SIZE, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
 
 const BATCH_SIZE = 10;
-const CHUNK_SIZE = 63_000;
-const BLOB_KEY = "__kv_toolbox_blob__";
 
 function asStream(
   kv: Deno.Kv,
@@ -76,56 +72,6 @@ async function asUint8Array(
     }
   }
   return found ? value : null;
-}
-
-function deleteKeys(
-  operation: BatchedAtomicOperation,
-  key: Deno.KvKey,
-  count: number,
-  length: number,
-): BatchedAtomicOperation {
-  while (++count <= length) {
-    operation.delete([...key, BLOB_KEY, count]);
-  }
-  return operation;
-}
-
-function writeArrayBuffer(
-  operation: BatchedAtomicOperation,
-  key: Deno.KvKey,
-  blob: ArrayBufferLike,
-  start = 0,
-  options?: { expireIn?: number },
-): [count: number, operation: BatchedAtomicOperation] {
-  const buffer = new Uint8Array(blob);
-  let offset = 0;
-  let count = start;
-  while (buffer.byteLength > offset) {
-    count++;
-    const chunk = buffer.subarray(offset, offset + CHUNK_SIZE);
-    operation.set([...key, BLOB_KEY, count], chunk, options);
-    offset += CHUNK_SIZE;
-  }
-  return [count, operation];
-}
-
-async function writeStream(
-  operation: BatchedAtomicOperation,
-  key: Deno.KvKey,
-  stream: ReadableStream<Uint8Array>,
-  options?: { expireIn?: number },
-): Promise<[count: number, operation: BatchedAtomicOperation]> {
-  let start = 0;
-  for await (const chunk of stream) {
-    [start, operation] = writeArrayBuffer(
-      operation,
-      key,
-      chunk,
-      start,
-      options,
-    );
-  }
-  return [start, operation];
 }
 
 /** Remove/delete a binary object from the store with a given key that has been
@@ -252,12 +198,6 @@ export async function set(
 ): Promise<void> {
   const items = await keys(kv, { prefix: [...key, BLOB_KEY] });
   let operation = batchedAtomic(kv);
-  let count;
-  if (blob instanceof ReadableStream) {
-    [count, operation] = await writeStream(operation, key, blob, options);
-  } else {
-    [count, operation] = writeArrayBuffer(operation, key, blob, 0, options);
-  }
-  operation = deleteKeys(operation, key, count, items.length);
+  operation = await setBlob(operation, key, blob, items.length, options);
   await operation.commit();
 }

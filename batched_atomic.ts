@@ -6,10 +6,23 @@
  * @module
  */
 
+import { BLOB_KEY, setBlob } from "./blob_util.ts";
+import { keys } from "./keys.ts";
+
 /** The default batch size for atomic operations. */
 const BATCH_SIZE = 10;
 
-type AtomicOperationKeys = keyof Deno.AtomicOperation;
+interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
+  deleteBlob(key: Deno.KvKey): this;
+
+  setBlob(
+    key: Deno.KvKey,
+    value: ArrayBufferLike | ReadableStream<Uint8Array>,
+    options?: { expireIn?: number },
+  ): this;
+}
+
+type AtomicOperationKeys = keyof KVToolboxAtomicOperation;
 
 export class BatchedAtomicOperation {
   #batchSize: number;
@@ -19,7 +32,7 @@ export class BatchedAtomicOperation {
 
   #enqueue<Op extends AtomicOperationKeys>(
     operation: Op,
-    args: Parameters<Deno.AtomicOperation[Op]>,
+    args: Parameters<KVToolboxAtomicOperation[Op]>,
   ): this {
     this.#queue.push([operation, args]);
     return this;
@@ -99,11 +112,32 @@ export class BatchedAtomicOperation {
   }
 
   /**
+   * Add to the operation a mutation that sets a blob value in the store if all
+   * checks pass during the commit. The blob can be any array buffer like
+   * structure or a byte {@linkcode ReadableStream}.
+   */
+  setBlob(
+    key: Deno.KvKey,
+    value: ArrayBufferLike | ReadableStream<Uint8Array>,
+    options?: { expireIn?: number },
+  ): this {
+    return this.#enqueue("setBlob", [key, value, options]);
+  }
+
+  /**
    * Add to the operation a mutation that deletes the specified key if all
    * checks pass during the commit.
    */
   delete(key: Deno.KvKey): this {
     return this.#enqueue("delete", [key]);
+  }
+
+  /**
+   * Add to the operation a set of mutations to delete the specified parts of
+   * a blob value if all checks pass during the commit.
+   */
+  deleteBlob(key: Deno.KvKey): this {
+    return this.#enqueue("deleteBlob", [key]);
   }
 
   /**
@@ -144,23 +178,38 @@ export class BatchedAtomicOperation {
     while (this.#queue.length) {
       const [method, args] = this.#queue.shift()!;
       count++;
-      if (method === "check") {
-        hasCheck = true;
-      }
-      // deno-lint-ignore no-explicit-any
-      (operation[method] as any).apply(operation, args);
-      if (count >= this.#batchSize || !this.#queue.length) {
-        const rp = operation.commit();
-        results.push(rp);
-        if (this.#queue.length) {
-          if (hasCheck) {
-            const result = await rp;
-            if (!result.ok) {
-              break;
+      if (method === "setBlob") {
+        const queue = this.#queue;
+        this.#queue = [];
+        const [key, value, options] = args;
+        const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
+        await setBlob(this, key, value, items.length, options);
+        this.#queue = [...this.#queue, ...queue];
+      } else if (method === "deleteBlob") {
+        const [key] = args;
+        const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
+        for (const item of items) {
+          this.#queue.unshift(["delete", [item]]);
+        }
+      } else {
+        if (method === "check") {
+          hasCheck = true;
+        }
+        // deno-lint-ignore no-explicit-any
+        (operation[method] as any).apply(operation, args);
+        if (count >= this.#batchSize || !this.#queue.length) {
+          const rp = operation.commit();
+          results.push(rp);
+          if (this.#queue.length) {
+            if (hasCheck) {
+              const result = await rp;
+              if (!result.ok) {
+                break;
+              }
             }
+            count = 0;
+            operation = this.#kv.atomic();
           }
-          count = 0;
-          operation = this.#kv.atomic();
         }
       }
     }

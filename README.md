@@ -12,6 +12,17 @@ where currently only 10 operations operations can be part of a commit.
 Similar to `Deno.Kv#atomic()`, but will batch individual transactions across as
 many atomic operations as necessary.
 
+There are two additional methods supported on batched atomics not supported by
+Deno KV atomic transactions:
+
+- `.setBlob(key, value, options?)` - Allows setting of arbitrarily size blob
+  values as part of an atomic transaction. The values can be a byte
+  `ReadableStream` or array buffer like. It will work around the constraints of
+  Deno KV value sizes by splitting the value across multiple keys.
+
+- `.deleteBlob(key)` - Allows deletion of all parts of a blob value as part of
+  an atomic transaction.
+
 The `commit()` method will return a promise which resolves with an array of
 results based on how many batches the operations was broken up into.
 
