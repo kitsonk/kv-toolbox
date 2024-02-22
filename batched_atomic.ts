@@ -146,7 +146,11 @@ export class BatchedAtomicOperation {
    */
   enqueue(
     value: unknown,
-    options?: { delay?: number; keysIfUndelivered?: Deno.KvKey[] },
+    options?: {
+      delay?: number;
+      keysIfUndelivered?: Deno.KvKey[];
+      backoffSchedule?: number[];
+    },
   ): this {
     return this.#enqueue("enqueue", [value, options]);
   }
