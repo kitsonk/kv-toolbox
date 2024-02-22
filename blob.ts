@@ -92,7 +92,7 @@ export async function remove(kv: Deno.Kv, key: Deno.KvKey): Promise<void> {
     batchSize: BATCH_SIZE,
   });
   if (parts.length) {
-    let op = kv.atomic();
+    let op = batchedAtomic(kv);
     for (const key of parts) {
       op = op.delete(key);
     }
