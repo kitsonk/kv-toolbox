@@ -27,7 +27,7 @@
  * @module
  */
 
-import { timingSafeEqual } from "https://deno.land/std@0.215.0/crypto/timing_safe_equal.ts";
+import { timingSafeEqual } from "https://deno.land/std@0.217.0/crypto/timing_safe_equal.ts";
 
 function addIfUnique(set: Set<Deno.KvKeyPart>, item: Uint8Array) {
   for (const i of set) {
