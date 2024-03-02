@@ -5,6 +5,20 @@
  * {@linkcode get} function reverses that process, and {@linkcode remove}
  * function will delete the key, sub-keys and values.
  *
+ * **Example**
+ *
+ * ```ts
+ * import { get, remove, set } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * const data = new TextEncoder().encode("hello deno!");
+ * await set(kv, ["hello"], data);
+ * const ab = await get(kv, ["hello"]);
+ * // do something with ab
+ * await remove(kv, ["hello"]);
+ * await kv.close();
+ * ```
+ *
  * @module
  */
 
@@ -77,10 +91,10 @@ async function asUint8Array(
 /** Remove/delete a binary object from the store with a given key that has been
  * {@linkcode set}.
  *
- * ### Example
+ * **Example**
  *
  * ```ts
- * import { remove } from "https://deno.land/x/kv-tools/blob.ts";
+ * import { remove } from "jsr:@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * await remove(kv, ["hello"]);
@@ -107,10 +121,10 @@ export async function remove(kv: Deno.Kv, key: Deno.KvKey): Promise<void> {
  * returned to read the blob in chunks of {@linkcode Uint8Array}, otherwise the
  * function resolves with a single {@linkcode Uint8Array}.
  *
- * ### Example
+ * **Example**
  *
  * ```ts
- * import { get } from "https://deno.land/x/kv-tools/blob.ts";
+ * import { get } from "jsr:@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const stream = await get(kv, ["hello"], { stream: true });
@@ -132,10 +146,10 @@ export function get(
  * returned to read the blob in chunks of {@linkcode Uint8Array}, otherwise the
  * function resolves with a single {@linkcode Uint8Array}.
  *
- * ### Example
+ * **Example**
  *
  * ```ts
- * import { get } from "https://deno.land/x/kv-tools/blob.ts";
+ * import { get } from "jsr:@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const ab = await get(kv, ["hello"]);
@@ -178,10 +192,10 @@ export function get(
  * key may still be visible for some additional time. If the `expireIn`
  * option is not specified, the key will not expire.
  *
- * ### Example
+ * **Example**
  *
  * ```ts
- * import { set } from "https://deno.land/x/kv-tools/blob.ts";
+ * import { set } from "jsr:@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const blob = new TextEncoder().encode("hello deno!");

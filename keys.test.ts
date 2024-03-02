@@ -1,6 +1,14 @@
 import { assert, assertEquals, setup, teardown } from "./_test_util.ts";
 
-import { equals, keys, startsWith, unique, uniqueCount } from "./keys.ts";
+import {
+  equals,
+  keys,
+  partEquals,
+  startsWith,
+  tree,
+  unique,
+  uniqueCount,
+} from "./keys.ts";
 
 Deno.test({
   name: "keys - returns a list of keys",
@@ -161,5 +169,62 @@ Deno.test({
         2n,
       ]),
     );
+  },
+});
+
+Deno.test({
+  name: "tree - returns a correct tree structure",
+  async fn() {
+    const kv = await setup();
+    const res = await kv.atomic()
+      .set(["a"], "a")
+      .set(["a", "b"], "b")
+      .set(["a", "b", "c"], "c")
+      .set(["a", "d", "f", "g"], "g")
+      .set(["a", "h"], "h")
+      .set(["e"], "e")
+      .commit();
+    assert(res.ok);
+
+    const actual = await tree(kv);
+
+    assertEquals(actual, {
+      children: [
+        {
+          part: "a",
+          hasValue: true,
+          children: [
+            {
+              part: "b",
+              hasValue: true,
+              children: [{ part: "c", hasValue: true }],
+            },
+            {
+              part: "d",
+              children: [{
+                part: "f",
+                children: [{ part: "g", hasValue: true }],
+              }],
+            },
+            { part: "h", hasValue: true },
+          ],
+        },
+        { part: "e", hasValue: true },
+      ],
+    });
+
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "partEquals",
+  fn() {
+    assert(partEquals("a", "a"));
+    assert(!partEquals("a", "b"));
+    assert(partEquals(1, 1));
+    assert(!partEquals(1, "1"));
+    assert(partEquals(new Uint8Array([1, 2, 3]), new Uint8Array([1, 2, 3])));
+    assert(!partEquals(new Uint8Array([1, 2, 3]), new Uint8Array([3, 2, 1])));
   },
 });

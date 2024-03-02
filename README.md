@@ -63,9 +63,15 @@ APIs for dealing with Deno KV keys.
 
 ### `equals()`
 
-Compares the quality of two `Deno.KvKey`s, returning `true` if they are equal
+Compares the equality of two `Deno.KvKey`s, returning `true` if they are equal
 and `false` if they are not. This is more specialized than other forms of deeply
 equal comparison.
+
+### `partEquals()`
+
+Compares the equality of two `Deno.KvKeyPart`s, returning `true` if they are
+equal and `false` if they are not. This is more specialized than other forms of
+equality comparison.
 
 ### `startsWith()`
 
@@ -77,6 +83,24 @@ it does, otherwise `false`.
 Similar to `Deno.Kv.prototype.list()`, in that is takes a selector, but instead
 of returning an async iterator of matched values, it resolves with an array of
 matching keys.
+
+### `tree()`
+
+This resolves with the key parts in an tree like structure, where each branch of
+the tree contains the children indexed by key part. The interface of the
+resolved value is:
+
+```ts
+interface KeyTreeNode {
+  part: Deno.KvKeyPart;
+  children?: KeyTreeNode[];
+}
+
+interface KeyTree {
+  prefix: Deno.KvKey;
+  children?: KeyTreeNode[];
+}
+```
 
 ### `unique()`
 

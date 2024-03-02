@@ -3,6 +3,19 @@
  * `Deno.Kv#atomic()` but will work around the limitation 10 transactions per
  * atomic operation.
  *
+ * **Example**
+ *
+ * ```ts
+ * import { batchedAtomic } from "jsr:@kitsonk/kv-toolbox/batched_atomic";
+ *
+ * const kv = await Deno.openKv();
+ * await batchedAtomic(kv)
+ *   .check({ key: ["hello"], versionstamp: null })
+ *   .set(["hello"], "deno kv")
+ *   .commit();
+ * await kv.close();
+ * ```
+ *
  * @module
  */
 
@@ -24,6 +37,8 @@ interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
 
 type AtomicOperationKeys = keyof KVToolboxAtomicOperation;
 
+/** The class that encapsulates the batched atomic operations, which works
+ * around the limitation of 10 transactions per operation. */
 export class BatchedAtomicOperation {
   #batchSize: number;
   #kv: Deno.Kv;
