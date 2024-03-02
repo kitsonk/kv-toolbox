@@ -63,13 +63,20 @@ async function writeStream(
 export async function setBlob(
   operation: BatchedAtomicOperation,
   key: Deno.KvKey,
-  blob: ArrayBufferLike | ReadableStream<Uint8Array>,
+  blob: ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
   itemCount: number,
   options?: { expireIn?: number },
 ) {
   let count;
   if (blob instanceof ReadableStream) {
     [count, operation] = await writeStream(operation, key, blob, options);
+  } else if (blob instanceof Blob) {
+    [count, operation] = await writeStream(
+      operation,
+      key,
+      blob.stream(),
+      options,
+    );
   } else {
     [count, operation] = writeArrayBuffer(operation, key, blob, 0, options);
   }

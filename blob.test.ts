@@ -43,6 +43,23 @@ Deno.test({
 });
 
 Deno.test({
+  name: "set - sets a blob value as a blob",
+  async fn() {
+    const kv = await setup();
+    const data = new Uint8Array(65_536);
+    window.crypto.getRandomValues(data);
+    const blob = new Blob([data]);
+    await set(kv, ["hello"], blob);
+    const actual = await keys(kv, { prefix: ["hello"] });
+    assertEquals(actual, [
+      ["hello", "__kv_toolbox_blob__", 1],
+      ["hello", "__kv_toolbox_blob__", 2],
+    ]);
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "set - replacing value sizes keys properly",
   async fn() {
     const kv = await setup();

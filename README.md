@@ -17,8 +17,9 @@ Deno KV atomic transactions:
 
 - `.setBlob(key, value, options?)` - Allows setting of arbitrarily size blob
   values as part of an atomic transaction. The values can be a byte
-  `ReadableStream` or array buffer like. It will work around the constraints of
-  Deno KV value sizes by splitting the value across multiple keys.
+  `ReadableStream`, array buffer like, or a `Blob`. It will work around the
+  constraints of Deno KV value sizes by splitting the value across multiple
+  keys.
 
 - `.deleteBlob(key)` - Allows deletion of all parts of a blob value as part of
   an atomic transaction.
@@ -40,7 +41,7 @@ Similar to `Deno.Kv.prototype.set()`, in that it stores a blob value with an
 associated key. In order to deal with the size limitations of values, `set()`
 will transparently chunk up the blob into parts that can be handled by Deno KV.
 
-The blob can be a byte `ReadableStream` or array buffer like.
+The blob can be a byte `ReadableStream`, array buffer like, or a `Blob`.
 
 ### `get()`
 

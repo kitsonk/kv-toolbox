@@ -179,8 +179,8 @@ export function get(
 }
 
 /** Set the blob value in the provided {@linkcode Deno.Kv} with the provided
- * key. The blob can be any array buffer like structure or a byte
- * {@linkcode ReadableStream}.
+ * key. The blob can be any array buffer like structure, a byte
+ * {@linkcode ReadableStream}, or a {@linkcode Blob}.
  *
  * The function chunks up the blob into parts which deno be stored in Deno KV
  * and should be retrieved back out using the {@linkcode get} function.
@@ -207,7 +207,7 @@ export function get(
 export async function set(
   kv: Deno.Kv,
   key: Deno.KvKey,
-  blob: ArrayBufferLike | ReadableStream<Uint8Array>,
+  blob: ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
   options?: { expireIn?: number },
 ): Promise<void> {
   const items = await keys(kv, { prefix: [...key, BLOB_KEY] });
