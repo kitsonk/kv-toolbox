@@ -5,6 +5,7 @@ export { assertEquals } from "https://deno.land/std@0.218.2/assert/assert_equals
 export {
   assertNotEquals,
 } from "https://deno.land/std@0.218.2/assert/assert_not_equals.ts";
+export { assertStrictEquals } from "https://deno.land/std@0.218.2/assert/assert_strict_equals.ts";
 export { timingSafeEqual } from "https://deno.land/std@0.218.2/crypto/timing_safe_equal.ts";
 
 let kv: Deno.Kv | undefined;

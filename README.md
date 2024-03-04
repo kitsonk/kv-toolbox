@@ -58,6 +58,61 @@ Similar to `Deno.Kv.prototype.delete()`, in that it deletes a blob key and value
 form the data store. If a blob value isn't stored for the given key, it resolves
 in a noop.
 
+## JSON
+
+APIs allowing the serialization and deserialization of Deno KV entries, keys,
+and values as JSON.
+
+These API are useful when trying to share information to or from the Deno
+runtime, like for example with a browser client. They can also be useful when
+wanting to start information from a Deno KV store in a human readable text
+format.
+
+### `entryMaybeToJSON()`
+
+Serialize a `Deno.KvEntryMaybe` to a structure which can be safely converted to
+a JSON string.
+
+### `entryToJSON()`
+
+Serialize a `Deno.KvEntry` to a structure which can be safely converted to a
+JSON string.
+
+### `keyPartToJSON()`
+
+Serialize a `Deno.KvKeyPart` to a structure which can be safely converted to a
+JSON string.
+
+### `keyToJSON()`
+
+Serialize a `Deno.KvKey` to a structure which can be safely converted to a JSON
+string.
+
+### `toEntry()`
+
+Deserialize a JSON structure to a `Deno.KvEntry`.
+
+### `toEntryMaybe()`
+
+Deserialize a JSON structure to a `Deno.KvEntryMaybe`.
+
+### `toKey()`
+
+Deserialize a JSON structure to a `Deno.KvKey`.
+
+### `toKeyPart()`
+
+Deserialize a JSON structure to a `Deno.KvKeyPart`.
+
+### `toValue()`
+
+Deserialize a JSON structure to a value which can be stored in a Deno KV store.
+
+### `valueToJSON()`
+
+Serialize a value which has been stored in a Deno KV store into a structure
+which can be safely converted to a JSON string.
+
 ## Keys
 
 APIs for dealing with Deno KV keys.

@@ -4,7 +4,9 @@
   "exports": {
     "./batched_atomic": "./batched_atomic.ts",
     "./blob": "./blob.ts",
-    "./keys": "./keys.ts"
+    "./json": "./json.ts",
+    "./keys": "./keys.ts",
+    "./ndjson": "./ndjson.ts"
   },
   "tasks": {
     "test": "deno test --allow-read --allow-write --unstable-kv"
