@@ -9,7 +9,9 @@
     "./ndjson": "./ndjson.ts"
   },
   "tasks": {
-    "test": "deno test --allow-read --allow-write --unstable-kv"
+    "coverage": "deno coverage --lcov --output=cov.lcov ./cov",
+    "test": "deno test --allow-read --allow-write --unstable-kv --parallel",
+    "test:ci": "deno test --allow-read --allow-write --unstable-kv --coverage=./cov --parallel"
   },
   "lock": false
 }
