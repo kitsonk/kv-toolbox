@@ -5,8 +5,7 @@
     "./batched_atomic": "./batched_atomic.ts",
     "./blob": "./blob.ts",
     "./json": "./json.ts",
-    "./keys": "./keys.ts",
-    "./ndjson": "./ndjson.ts"
+    "./keys": "./keys.ts"
   },
   "tasks": {
     "coverage": "deno coverage --lcov --output=cov.lcov ./cov",
