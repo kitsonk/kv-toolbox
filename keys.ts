@@ -75,13 +75,13 @@
  * ["a", "d", "f"]
  * ```
  *
- * And you would get the following results when using `unique()`:
+ * And you would get the following results when using `tree()`:
  *
  * ```ts
  * import { unique } from "jsr:@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
- * console.log(await unique(kv, ["a"]));
+ * console.log(await tree(kv, ["a"]));
  * // {
  * //   prefix: ["a"],
  * //   children: [
@@ -430,13 +430,13 @@ export interface KeyTree {
  * ["a", "d", "f"]
  * ```
  *
- * And you would get the following results when using `unique()`:
+ * And you would get the following results when using `tree()`:
  *
  * ```ts
  * import { unique } from "jsr:@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
- * console.log(await unique(kv, ["a"]));
+ * console.log(await tree(kv, ["a"]));
  * // {
  * //   prefix: ["a"],
  * //   children: [
