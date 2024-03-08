@@ -37,6 +37,11 @@ import { entryToJSON, type KvEntryJSON, toKey, toValue } from "./json.ts";
 
 interface ExportEntriesOptionsJSON extends Deno.KvListOptions {
   /**
+   * Determines if the function should close the provided KV store once all the
+   * entities are exported. By default, the store won't be closed.
+   */
+  close?: boolean;
+  /**
    * Determines if the chunks of the readable stream will be "raw" JSON entries
    * or already encoded as a byte stream of NDJSON. If `true` they will be
    * individual JSON entries, otherwise a byte stream.
@@ -45,6 +50,11 @@ interface ExportEntriesOptionsJSON extends Deno.KvListOptions {
 }
 
 interface ExportEntriesOptionsBytes extends Deno.KvListOptions {
+  /**
+   * Determines if the function should close the provided KV store once all the
+   * entities are exported. By default, the store won't be closed.
+   */
+  close?: boolean;
   /**
    * Determines if the chunks of the readable stream will be "raw" JSON entries
    * or already encoded as a byte stream of NDJSON. If `true` they will be
@@ -64,6 +74,11 @@ export type ExportEntriesOptions =
  * Options which can be set on {@linkcode exportToResponse}.
  */
 export interface ExportToResponseOptions extends Deno.KvListOptions {
+  /**
+   * Determines if the function should close the provided KV store once all the
+   * entities are exported. By default, the store won't be closed.
+   */
+  close?: boolean;
   /**
    * If provided, the response will include a header that indicates the file is
    * meant to be downloaded (`Content-Disposition`). The extension `.ndjson`
@@ -225,6 +240,9 @@ export function exportEntries(
           if (cancelled) {
             return;
           }
+        }
+        if (options.close) {
+          kv.close();
         }
         controller.close();
       } catch (error) {
