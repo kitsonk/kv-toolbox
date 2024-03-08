@@ -1,12 +1,11 @@
-import { assert } from "https://deno.land/std@0.218.2/assert/assert.ts";
-export { delay } from "https://deno.land/std@0.218.2/async/delay.ts";
-export { assert } from "https://deno.land/std@0.218.2/assert/assert.ts";
-export { assertEquals } from "https://deno.land/std@0.218.2/assert/assert_equals.ts";
-export {
-  assertNotEquals,
-} from "https://deno.land/std@0.218.2/assert/assert_not_equals.ts";
-export { assertStrictEquals } from "https://deno.land/std@0.218.2/assert/assert_strict_equals.ts";
-export { timingSafeEqual } from "https://deno.land/std@0.218.2/crypto/timing_safe_equal.ts";
+import { assert } from "jsr:@std/assert@0.218/assert";
+export { concat } from "jsr:@std/bytes@0.218/concat";
+export { delay } from "jsr:@std/async@0.218/delay";
+export { assert } from "jsr:@std/assert@0.218/assert";
+export { assertEquals } from "jsr:@std/assert@0.218/assert_equals";
+export { assertNotEquals } from "jsr:@std/assert@0.218/assert_not_equals";
+export { assertStrictEquals } from "jsr:@std/assert@0.218/assert_strict_equals";
+export { timingSafeEqual } from "jsr:@std/crypto@0.218/timing_safe_equal";
 
 let kv: Deno.Kv | undefined;
 let path: string | undefined;

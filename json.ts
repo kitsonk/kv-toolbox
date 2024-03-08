@@ -37,7 +37,7 @@
 import {
   decodeBase64Url,
   encodeBase64Url,
-} from "https://deno.land/std@0.218.2/encoding/base64url.ts";
+} from "jsr:@std/encoding@0.218/base64url";
 
 // Deno KV Key types
 
