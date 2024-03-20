@@ -1,6 +1,6 @@
 {
   "name": "@kitsonk/kv-toolbox",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "exports": {
     "./batched_atomic": "./batched_atomic.ts",
     "./blob": "./blob.ts",
