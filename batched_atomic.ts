@@ -30,7 +30,7 @@ interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
 
   setBlob(
     key: Deno.KvKey,
-    value: ArrayBufferLike | ReadableStream<Uint8Array>,
+    value: ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
     options?: { expireIn?: number },
   ): this;
 }
@@ -129,11 +129,12 @@ export class BatchedAtomicOperation {
   /**
    * Add to the operation a mutation that sets a blob value in the store if all
    * checks pass during the commit. The blob can be any array buffer like
-   * structure or a byte {@linkcode ReadableStream}.
+   * structure, a byte {@linkcode ReadableStream}, or a {@linkcode Blob} or
+   * {@linkcode File}.
    */
   setBlob(
     key: Deno.KvKey,
-    value: ArrayBufferLike | ReadableStream<Uint8Array>,
+    value: ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
     options?: { expireIn?: number },
   ): this {
     return this.#enqueue("setBlob", [key, value, options]);

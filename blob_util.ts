@@ -7,7 +7,18 @@
 
 import { type BatchedAtomicOperation } from "./batched_atomic.ts";
 
+export type BlobMeta = {
+  kind: "blob";
+  type: string;
+} | {
+  kind: "file";
+  type: string;
+  lastModified: number;
+  name: string;
+};
+
 export const BLOB_KEY = "__kv_toolbox_blob__";
+export const BLOB_META_KEY = "__kv_toolbox_meta__";
 export const CHUNK_SIZE = 63_000;
 
 function deleteKeys(
@@ -41,6 +52,27 @@ function writeArrayBuffer(
   return [count, operation];
 }
 
+function writeBlob(
+  operation: BatchedAtomicOperation,
+  key: Deno.KvKey,
+  blob: Blob,
+  options?: { expireIn?: number },
+): Promise<[count: number, operation: BatchedAtomicOperation]> {
+  let meta: BlobMeta;
+  if (blob instanceof File) {
+    meta = {
+      kind: "file",
+      type: blob.type,
+      lastModified: blob.lastModified,
+      name: blob.name,
+    };
+  } else {
+    meta = { kind: "blob", type: blob.type };
+  }
+  operation.set([...key, BLOB_META_KEY], meta, options);
+  return writeStream(operation, key, blob.stream(), options);
+}
+
 async function writeStream(
   operation: BatchedAtomicOperation,
   key: Deno.KvKey,
@@ -71,10 +103,10 @@ export async function setBlob(
   if (blob instanceof ReadableStream) {
     [count, operation] = await writeStream(operation, key, blob, options);
   } else if (blob instanceof Blob) {
-    [count, operation] = await writeStream(
+    [count, operation] = await writeBlob(
       operation,
       key,
-      blob.stream(),
+      blob,
       options,
     );
   } else {

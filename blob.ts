@@ -1,11 +1,18 @@
 /**
  * A set of APIs for storing arbitrarily sized blobs in Deno KV. Currently Deno
- * KV has a limit of key values being 64k. The {@linkcode set} function breaks
- * down a blob into chunks and manages sub-keys to store the complete value. The
- * {@linkcode get} function reverses that process, and {@linkcode remove}
- * function will delete the key, sub-keys and values.
+ * KV has a limit of key values being 64k.
  *
- * **Example**
+ * The {@linkcode set} function breaks down a blob into chunks and manages
+ * sub-keys to store the complete value, including preserving meta data
+ * associated with {@linkcode Blob} and {@linkcode File} instances.
+ *
+ * The {@linkcode get}, {@linkcode getAsBlob} and {@linkcode getAsStream}
+ * functions reverse that process, and {@linkcode remove} function will delete
+ * the key, sub-keys and values.
+ *
+ * In addition, if a {@linkcode Blob} or {@linkcode File} is provided on set,
+ *
+ * @example Basic usage
  *
  * ```ts
  * import { get, remove, set } from "jsr:@kitsonk/kv-toolbox/blob";
@@ -19,14 +26,76 @@
  * await kv.close();
  * ```
  *
+ * @example Setting and getting `File`s
+ *
+ * ```ts
+ * import { getAsBlob, remove, set } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * // assume this is form data submitted as a `Request`
+ * const body = new FormData();
+ * for (const [name, value] of body) {
+ *   if (value instanceof File) {
+ *     await set(kv, ["files", name], value);
+ *   }
+ * }
+ * // and then later
+ * const file = await getAsBlob(kv, ["file", "image"]);
+ * // now the `File` is restored and can be processed
+ * await remove(kv, ["file", "image"]);
+ * await kv.close();
+ * ```
+ *
  * @module
  */
 
 import { batchedAtomic } from "./batched_atomic.ts";
-import { BLOB_KEY, CHUNK_SIZE, setBlob } from "./blob_util.ts";
+import {
+  BLOB_KEY,
+  BLOB_META_KEY,
+  type BlobMeta,
+  CHUNK_SIZE,
+  setBlob,
+} from "./blob_util.ts";
 import { keys } from "./keys.ts";
 
 const BATCH_SIZE = 10;
+
+async function asBlob(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined },
+): Promise<File | Blob | null> {
+  const list = kv.list<Uint8Array>({ prefix: [...key, BLOB_KEY] }, {
+    ...options,
+    batchSize: BATCH_SIZE,
+  });
+  let found = false;
+  const parts: Uint8Array[] = [];
+  for await (const item of list) {
+    if (item.value) {
+      found = true;
+      if (!(item.value instanceof Uint8Array)) {
+        throw new TypeError("KV value is not a Uint8Array.");
+      }
+      parts.push(item.value);
+    }
+  }
+  if (!found) {
+    return null;
+  }
+  const maybeMeta = await kv.get<BlobMeta>([...key, BLOB_META_KEY]);
+  if (maybeMeta.value) {
+    const { value } = maybeMeta;
+    return value.kind === "file"
+      ? new File(parts, value.name, {
+        lastModified: value.lastModified,
+        type: value.type,
+      })
+      : new Blob(parts, { type: value.type });
+  }
+  return new Blob(parts);
+}
 
 function asStream(
   kv: Deno.Kv,
@@ -106,7 +175,7 @@ export async function remove(kv: Deno.Kv, key: Deno.KvKey): Promise<void> {
     batchSize: BATCH_SIZE,
   });
   if (parts.length) {
-    let op = batchedAtomic(kv);
+    let op = batchedAtomic(kv).delete([...key, BLOB_META_KEY]);
     for (const key of parts) {
       op = op.delete(key);
     }
@@ -118,10 +187,18 @@ export async function remove(kv: Deno.Kv, key: Deno.KvKey): Promise<void> {
  * {@linkcode set}.
  *
  * When setting the option `stream` to `true`, a {@linkcode ReadableStream} is
- * returned to read the blob in chunks of {@linkcode Uint8Array}, otherwise the
- * function resolves with a single {@linkcode Uint8Array}.
+ * returned to read the blob in chunks of {@linkcode Uint8Array}
  *
- * **Example**
+ * When setting the option `blob` to `true`, the promise resolves with a
+ * {@linkcode Blob}, {@linkcode File}, or `null`. If the original file had been
+ * a {@linkcode File} or {@linkcode Blob} it the resolved value will reflect
+ * that original value including its properties. If it was not, it will be a
+ * {@linkcode Blob} with a type of `""`.
+ *
+ * Otherwise the function resolves with a single {@linkcode Uint8Array} or
+ * `null`.
+ *
+ * @example
  *
  * ```ts
  * import { get } from "jsr:@kitsonk/kv-toolbox/blob";
@@ -143,10 +220,49 @@ export function get(
  * {@linkcode set}.
  *
  * When setting the option `stream` to `true`, a {@linkcode ReadableStream} is
- * returned to read the blob in chunks of {@linkcode Uint8Array}, otherwise the
- * function resolves with a single {@linkcode Uint8Array}.
+ * returned to read the blob in chunks of {@linkcode Uint8Array}
  *
- * **Example**
+ * When setting the option `blob` to `true`, the promise resolves with a
+ * {@linkcode Blob}, {@linkcode File}, or `null`. If the original file had been
+ * a {@linkcode File} or {@linkcode Blob} it the resolved value will reflect
+ * that original value including its properties. If it was not, it will be a
+ * {@linkcode Blob} with a type of `""`.
+ *
+ * Otherwise the function resolves with a single {@linkcode Uint8Array} or
+ * `null`.
+ *
+ * @example
+ *
+ * ```ts
+ * import { get } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * const blob = await get(kv, ["hello"], { blob: true });
+ * // do something with blob
+ * await kv.close();
+ * ```
+ */
+export function get(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined; blob: true },
+): Promise<File | Blob | null>;
+/** Retrieve a binary object from the store with a given key that has been
+ * {@linkcode set}.
+ *
+ * When setting the option `stream` to `true`, a {@linkcode ReadableStream} is
+ * returned to read the blob in chunks of {@linkcode Uint8Array}
+ *
+ * When setting the option `blob` to `true`, the promise resolves with a
+ * {@linkcode Blob}, {@linkcode File}, or `null`. If the original file had been
+ * a {@linkcode File} or {@linkcode Blob} it the resolved value will reflect
+ * that original value including its properties. If it was not, it will be a
+ * {@linkcode Blob} with a type of `""`.
+ *
+ * Otherwise the function resolves with a single {@linkcode Uint8Array} or
+ * `null`.
+ *
+ * @example
  *
  * ```ts
  * import { get } from "jsr:@kitsonk/kv-toolbox/blob";
@@ -162,6 +278,7 @@ export function get(
   key: Deno.KvKey,
   options?: {
     consistency?: Deno.KvConsistencyLevel | undefined;
+    blob?: boolean;
     stream?: boolean;
   },
 ): Promise<Uint8Array | null>;
@@ -170,12 +287,74 @@ export function get(
   key: Deno.KvKey,
   options: {
     consistency?: Deno.KvConsistencyLevel | undefined;
+    blob?: boolean;
     stream?: boolean;
   } = {},
-): ReadableStream<Uint8Array> | Promise<Uint8Array | null> {
+):
+  | ReadableStream<Uint8Array>
+  | Promise<Uint8Array | null>
+  | Promise<File | Blob | null> {
   return options.stream
     ? asStream(kv, key, options)
+    : options.blob
+    ? asBlob(kv, key, options)
     : asUint8Array(kv, key, options);
+}
+
+/**
+ * Retrieve a binary object from the store as a {@linkcode Blob} or
+ * {@linkcode File} that has been previously {@linkcode set}.
+ *
+ * If the object set was originally a {@linkcode Blob} or {@linkcode File} the
+ * function will resolve with an instance of {@linkcode Blob} or
+ * {@linkcode File} with the same properties as the original.
+ *
+ * If it was some other form of binary data, it will be an instance of
+ * {@linkcode Blob} with an empty `.type` property.
+ *
+ * If there is no corresponding entry, the function will resolve to `null`.
+ *
+ * @example Getting a value
+ *
+ * ```ts
+ * import { getAsBlob } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * const blob = await getAsBlob(kv, ["hello"]);
+ * // do something with blob
+ * await kv.close();
+ * ```
+ */
+export function getAsBlob(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
+): Promise<Blob | File | null> {
+  return asBlob(kv, key, options);
+}
+
+/**
+ * Retrieve a binary object from the store as a byte {@linkcode ReadableStream}.
+ *
+ * If there is no corresponding entry, the stream will provide no chunks.
+ *
+ * @example Getting a value
+ *
+ * ```ts
+ * import { getAsStream } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * const stream = await getAsStream(kv, ["hello"]);
+ * // do something with stream
+ * await kv.close();
+ * ```
+ */
+export function getAsStream(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
+): ReadableStream<Uint8Array> {
+  return asStream(kv, key, options);
 }
 
 /** Set the blob value in the provided {@linkcode Deno.Kv} with the provided
@@ -192,7 +371,7 @@ export function get(
  * key may still be visible for some additional time. If the `expireIn`
  * option is not specified, the key will not expire.
  *
- * **Example**
+ * @example Setting a `Uint8Array`
  *
  * ```ts
  * import { set } from "jsr:@kitsonk/kv-toolbox/blob";
@@ -200,7 +379,20 @@ export function get(
  * const kv = await Deno.openKv();
  * const blob = new TextEncoder().encode("hello deno!");
  * await set(kv, ["hello"], blob);
- * // do something with ab
+ * await kv.close();
+ * ```
+ *
+ * @example Setting a `Blob`
+ *
+ * ```ts
+ * import { set } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * const blob = new Blob(
+ *   [new TextEncoder().encode("hello deno!")],
+ *   { type: "text/plain" },
+ * );
+ * await set(kv, ["hello"], blob);
  * await kv.close();
  * ```
  */

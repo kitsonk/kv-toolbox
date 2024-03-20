@@ -17,8 +17,8 @@ Deno KV atomic transactions:
 
 - `.setBlob(key, value, options?)` - Allows setting of arbitrarily size blob
   values as part of an atomic transaction. The values can be a byte
-  `ReadableStream`, array buffer like, or a `Blob`. It will work around the
-  constraints of Deno KV value sizes by splitting the value across multiple
+  `ReadableStream`, array buffer like, a `Blob` or a `File`. It will work around
+  the constraints of Deno KV value sizes by splitting the value across multiple
   keys.
 
 - `.deleteBlob(key)` - Allows deletion of all parts of a blob value as part of
@@ -31,9 +31,9 @@ results based on how many batches the operations was broken up into.
 
 A set of APIs for storing arbitrarily sized blobs in Deno KV. Currently Deno KV
 has a limit of key values being 64k. The `set()` function breaks down a blob
-into chunks and manages sub-keys to store the complete value. The `get()`
-function reverses that process, and `remove()` will delete the key, sub-keys and
-values.
+into chunks and manages sub-keys to store the complete value. The `get()`,
+`getAsBlob()` and `getAsStream()` functions reverse that process, and `remove()`
+will delete the key, sub-keys and values.
 
 ### `set()`
 
@@ -41,7 +41,11 @@ Similar to `Deno.Kv.prototype.set()`, in that it stores a blob value with an
 associated key. In order to deal with the size limitations of values, `set()`
 will transparently chunk up the blob into parts that can be handled by Deno KV.
 
-The blob can be a byte `ReadableStream`, array buffer like, or a `Blob`.
+The blob can be a byte `ReadableStream`, array buffer like, a `Blob` or a
+`File`.
+
+When the value is being set is a `Blob` or `File` the meta data will also be
+preserved (like the `type` property).
 
 ### `get()`
 
@@ -50,7 +54,26 @@ the provided key. If a previous blob value has been set with `set()`, it will be
 retrieved.
 
 By default the value is resolved as a `Uint8Array` but if the option `stream` is
-set to `true`, then a byte `ReadableStream` is provided to read out the blob.
+set to `true`, then a byte `ReadableStream` is provided to read out the blob. If
+the option `blob` is set to `true`, then a `Blob` or `File` will be resolved. If
+the value originally set was a `File` or `Blob` the resolved instance will be
+that of the original value including restoring the additional properties, like
+`type`. If the value wasn't a `Blob` or `File` originally, the function will
+resolve to a `Blob` with an empty `type`.
+
+### `getAsBlob()`
+
+Retrieves a blob value based on the provided key and resolves with a `Blob` or
+`File`. If the value originally set was a `File` or `Blob` the resolved instance
+will be that of the original value including restoring the additional
+properties, like `type`. If the value wasn't a `Blob` or `File` originally, the
+function will resolve to a `Blob` with an empty `type`.
+
+### `getAsStream()`
+
+Retrieves a blob value based on the provided key and returns a byte
+`ReadableStream` which the binary data can be read from. If there is no value
+present, the stream will be empty.
 
 ### `remove()`
 

@@ -6,7 +6,7 @@ import {
   timingSafeEqual,
 } from "./_test_util.ts";
 
-import { get, remove, set } from "./blob.ts";
+import { get, getAsBlob, getAsStream, remove, set } from "./blob.ts";
 import { keys } from "./keys.ts";
 
 Deno.test({
@@ -48,13 +48,47 @@ Deno.test({
     const kv = await setup();
     const data = new Uint8Array(65_536);
     window.crypto.getRandomValues(data);
-    const blob = new Blob([data]);
+    const blob = new Blob([data], { type: "application/octet-stream" });
     await set(kv, ["hello"], blob);
     const actual = await keys(kv, { prefix: ["hello"] });
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
       ["hello", "__kv_toolbox_blob__", 2],
+      ["hello", "__kv_toolbox_meta__"],
     ]);
+    const metaEntry = await kv.get(["hello", "__kv_toolbox_meta__"]);
+    assertEquals(metaEntry.value, {
+      kind: "blob",
+      type: "application/octet-stream",
+    });
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "set - sets a blob value as a file",
+  async fn() {
+    const kv = await setup();
+    const data = new Uint8Array(65_536);
+    window.crypto.getRandomValues(data);
+    const blob = new File([data], "test.bin", {
+      type: "application/octet-stream",
+      lastModified: 12345678,
+    });
+    await set(kv, ["hello"], blob);
+    const actual = await keys(kv, { prefix: ["hello"] });
+    assertEquals(actual, [
+      ["hello", "__kv_toolbox_blob__", 1],
+      ["hello", "__kv_toolbox_blob__", 2],
+      ["hello", "__kv_toolbox_meta__"],
+    ]);
+    const metaEntry = await kv.get(["hello", "__kv_toolbox_meta__"]);
+    assertEquals(metaEntry.value, {
+      kind: "file",
+      type: "application/octet-stream",
+      name: "test.bin",
+      lastModified: 12345678,
+    });
     return teardown();
   },
 });
@@ -124,13 +158,76 @@ Deno.test({
 });
 
 Deno.test({
-  name: "remove - deletes a blob value",
+  name: "getAsStream - streams blob value",
   async fn() {
     const kv = await setup();
     const blob = new Uint8Array(65_536);
     window.crypto.getRandomValues(blob);
     await set(kv, ["hello"], blob);
-    assertEquals((await keys(kv, { prefix: ["hello"] })).length, 2);
+    const stream = getAsStream(kv, ["hello"]);
+    let count = 0;
+    for await (const _ of stream) {
+      count++;
+    }
+    assertEquals(count, 2);
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "set/get - files",
+  async fn() {
+    const kv = await setup();
+    const data = await Deno.readFile("./_fixtures/png-1mb.png");
+    const stats = await Deno.stat("./_fixtures/png-1mb.png");
+    const file = new File([data], "png-1mb.png", {
+      lastModified: stats.mtime?.getTime(),
+      type: "image/png",
+    });
+    await set(kv, ["hello"], file);
+    const actual = await get(kv, ["hello"], { blob: true });
+    assert(actual instanceof File);
+    assertEquals(actual.name, "png-1mb.png");
+    assertEquals(actual.type, "image/png");
+    assertEquals(actual.lastModified, file.lastModified);
+    assert(
+      timingSafeEqual(await actual.arrayBuffer(), await file.arrayBuffer()),
+    );
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "set/getAsBlob - files",
+  async fn() {
+    const kv = await setup();
+    const data = await Deno.readFile("./_fixtures/png-1mb.png");
+    const stats = await Deno.stat("./_fixtures/png-1mb.png");
+    const file = new File([data], "png-1mb.png", {
+      lastModified: stats.mtime?.getTime(),
+      type: "image/png",
+    });
+    await set(kv, ["hello"], file);
+    const actual = await getAsBlob(kv, ["hello"]);
+    assert(actual instanceof File);
+    assertEquals(actual.name, "png-1mb.png");
+    assertEquals(actual.type, "image/png");
+    assertEquals(actual.lastModified, file.lastModified);
+    assert(
+      timingSafeEqual(await actual.arrayBuffer(), await file.arrayBuffer()),
+    );
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "remove - deletes a blob value",
+  async fn() {
+    const kv = await setup();
+    const data = new Uint8Array(65_536);
+    window.crypto.getRandomValues(data);
+    await set(kv, ["hello"], new Blob([data]));
+    assertEquals((await keys(kv, { prefix: ["hello"] })).length, 3);
     await remove(kv, ["hello"]);
     assertEquals((await keys(kv, { prefix: ["hello"] })).length, 0);
     return teardown();
