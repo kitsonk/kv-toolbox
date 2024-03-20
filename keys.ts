@@ -144,7 +144,7 @@
  * @module
  */
 
-import { timingSafeEqual } from "jsr:@std/crypto@0.218/timing_safe_equal";
+import { timingSafeEqual } from "jsr:@std/crypto@0.220/timing_safe_equal";
 
 function addIfUnique(set: Set<Deno.KvKeyPart>, item: Uint8Array) {
   for (const i of set) {
