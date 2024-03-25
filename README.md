@@ -69,6 +69,11 @@ will be that of the original value including restoring the additional
 properties, like `type`. If the value wasn't a `Blob` or `File` originally, the
 function will resolve to a `Blob` with an empty `type`.
 
+### `getAsJSON()`
+
+Retrieve a blob value based on the provided key and resolve with its JSON
+representation.
+
 ### `getAsStream()`
 
 Retrieves a blob value based on the provided key and returns a byte
@@ -80,6 +85,17 @@ present, the stream will be empty.
 Similar to `Deno.Kv.prototype.delete()`, in that it deletes a blob key and value
 form the data store. If a blob value isn't stored for the given key, it resolves
 in a noop.
+
+### `toJSON()`
+
+Convert an array buffer, typed array, `Blob` or `File` to a format which can be
+stringified into a JSON string.
+
+### `toValue()`
+
+Convert a JSON representation of a blob back into a value. Depending on what
+kind of value the JSON represents, either a `Uint8Array`, `Blob` or `File` is
+returned.
 
 ## JSON
 

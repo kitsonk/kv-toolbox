@@ -6,7 +6,16 @@ import {
   timingSafeEqual,
 } from "./_test_util.ts";
 
-import { get, getAsBlob, getAsStream, remove, set } from "./blob.ts";
+import {
+  get,
+  getAsBlob,
+  getAsJSON,
+  getAsStream,
+  remove,
+  set,
+  toJSON,
+  toValue,
+} from "./blob.ts";
 import { keys } from "./keys.ts";
 
 Deno.test({
@@ -171,6 +180,126 @@ Deno.test({
     }
     assertEquals(count, 2);
     return teardown();
+  },
+});
+
+Deno.test({
+  name: "getAsJSON - handles array buffer like",
+  async fn() {
+    const kv = await setup();
+    const u8 = new Uint8Array(65_536);
+    window.crypto.getRandomValues(u8);
+    await set(kv, ["hello"], u8);
+    const json = await getAsJSON(kv, ["hello"]);
+    assert(json);
+    assertEquals(json.parts.length, 2);
+    assertEquals(json.meta, { kind: "buffer" });
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "getAsJSON - handles blob",
+  async fn() {
+    const kv = await setup();
+    const u8 = new Uint8Array(65_536);
+    window.crypto.getRandomValues(u8);
+    await set(
+      kv,
+      ["hello"],
+      new Blob([u8], { type: "application/octet-stream" }),
+    );
+    const json = await getAsJSON(kv, ["hello"]);
+    assert(json);
+    assertEquals(json.parts.length, 2);
+    assertEquals(json.meta, { kind: "blob", type: "application/octet-stream" });
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "getAsJSON - handles file",
+  async fn() {
+    const kv = await setup();
+    const u8 = new Uint8Array(65_536);
+    window.crypto.getRandomValues(u8);
+    await set(
+      kv,
+      ["hello"],
+      new File([u8], "test.bin", {
+        type: "application/octet-stream",
+        lastModified: 1711349710546,
+      }),
+    );
+    const json = await getAsJSON(kv, ["hello"]);
+    assert(json);
+    assertEquals(json.parts.length, 2);
+    assertEquals(json.meta, {
+      kind: "file",
+      type: "application/octet-stream",
+      name: "test.bin",
+      lastModified: 1711349710546,
+    });
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "toJSON/toValue - File",
+  async fn() {
+    const u8 = new Uint8Array(65_536);
+    window.crypto.getRandomValues(u8);
+    const json = await toJSON(
+      new File([u8], "test.bin", {
+        type: "application/octet-stream",
+        lastModified: 1711349710546,
+      }),
+    );
+    assertEquals(json.meta, {
+      kind: "file",
+      type: "application/octet-stream",
+      name: "test.bin",
+      lastModified: 1711349710546,
+    });
+    assertEquals(json.parts.length, 2);
+    const value = toValue(json);
+    assert(value instanceof File);
+    assertEquals((await value.arrayBuffer()).byteLength, 65_536);
+    assertEquals(value.name, "test.bin");
+    assertEquals(value.lastModified, 1711349710546);
+    assertEquals(value.type, "application/octet-stream");
+  },
+});
+
+Deno.test({
+  name: "toJSON/toValue - Blob",
+  async fn() {
+    const u8 = new Uint8Array(65_536);
+    window.crypto.getRandomValues(u8);
+    const json = await toJSON(
+      new Blob([u8], { type: "application/octet-stream" }),
+    );
+    assertEquals(json.meta, { kind: "blob", type: "application/octet-stream" });
+    assertEquals(json.parts.length, 2);
+    const value = toValue(json);
+    assert(value instanceof Blob);
+    assert(!(value instanceof File));
+    assertEquals((await value.arrayBuffer()).byteLength, 65_536);
+    assertEquals(value.type, "application/octet-stream");
+  },
+});
+
+Deno.test({
+  name: "toJSON/toValue - buffer",
+  async fn() {
+    const u8 = new Uint8Array(65_536);
+    window.crypto.getRandomValues(u8);
+    const json = await toJSON(u8);
+    assertEquals(json.meta, { kind: "buffer" });
+    assertEquals(json.parts.length, 2);
+    const value = toValue(json);
+    assert(value instanceof Uint8Array);
+    assertEquals(value.byteLength, 65_536);
   },
 });
 

@@ -7,6 +7,10 @@
 
 import { type BatchedAtomicOperation } from "./batched_atomic.ts";
 
+/**
+ * When a blob entry was originally a {@linkcode Blob} or {@linkcode File} a
+ * sub-entry will be set with the value of this meta data.
+ */
 export type BlobMeta = {
   kind: "blob";
   type: string;
@@ -17,7 +21,17 @@ export type BlobMeta = {
   name: string;
 };
 
+/**
+ * When there are parts of a blob, this key will be set as a sub-key of the blob
+ * blob entry, which will have additional sub-keys with the parts of the blob
+ * stored as {@linkcode Uint8Array} with a key of an incrementing number.
+ */
 export const BLOB_KEY = "__kv_toolbox_blob__";
+/**
+ * If there is meta data associated with a blob entry, like for something that
+ * was originally a {@linkcode Blob} or {@linkcode File}, then this will be set
+ * as a sub-key of that blob key with a value of the meta data.
+ */
 export const BLOB_META_KEY = "__kv_toolbox_meta__";
 export const CHUNK_SIZE = 63_000;
 

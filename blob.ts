@@ -49,6 +49,12 @@
  * @module
  */
 
+import {
+  decodeBase64Url,
+  encodeBase64Url,
+} from "jsr:@std/encoding@0.220/base64url";
+export { concat } from "jsr:@std/bytes@0.220/concat";
+
 import { batchedAtomic } from "./batched_atomic.ts";
 import {
   BLOB_KEY,
@@ -58,6 +64,38 @@ import {
   setBlob,
 } from "./blob_util.ts";
 import { keys } from "./keys.ts";
+import { concat } from "./_test_util.ts";
+
+export { BLOB_KEY, BLOB_META_KEY, type BlobMeta } from "./blob_util.ts";
+
+/** An interface to represent a blob value as JSON. */
+export type BlobJSON = BlobBlobJSON | BlobBufferJSON | BlobFileJSON;
+
+/** An interface to represent a {@linkcode Blob} value as JSON. */
+export interface BlobBlobJSON {
+  meta: {
+    kind: "blob";
+    type: string;
+  };
+  parts: string[];
+}
+
+/** An interface to represent a array buffer or typed array value as JSON. */
+export interface BlobBufferJSON {
+  meta: { kind: "buffer" };
+  parts: string[];
+}
+
+/** An interface to represent a {@linkcode File} value as JSON. */
+export interface BlobFileJSON {
+  meta: {
+    kind: "file";
+    type: string;
+    lastModified: number;
+    name: string;
+  };
+  parts: string[];
+}
 
 const BATCH_SIZE = 10;
 
@@ -95,6 +133,41 @@ async function asBlob(
       : new Blob(parts, { type: value.type });
   }
   return new Blob(parts);
+}
+
+async function asJSON(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined },
+): Promise<BlobJSON | null> {
+  const list = kv.list<Uint8Array>({ prefix: [...key, BLOB_KEY] }, {
+    ...options,
+    batchSize: BATCH_SIZE,
+  });
+  let found = false;
+  const parts: Uint8Array[] = [];
+  for await (const item of list) {
+    if (item.value) {
+      found = true;
+      if (!(item.value instanceof Uint8Array)) {
+        throw new TypeError("KV value is not a Uint8Array");
+      }
+      parts.push(item.value);
+    }
+  }
+  if (!found) {
+    return null;
+  }
+  const json: BlobJSON = {
+    meta: { kind: "buffer" },
+    parts: parts.map(encodeBase64Url),
+  };
+  // deno-lint-ignore no-explicit-any
+  const maybeMeta = await kv.get<any>([...key, BLOB_META_KEY]);
+  if (maybeMeta.value) {
+    json.meta = maybeMeta.value;
+  }
+  return json;
 }
 
 function asStream(
@@ -155,6 +228,17 @@ async function asUint8Array(
     }
   }
   return found ? value : null;
+}
+
+function toParts(blob: ArrayBufferLike): string[] {
+  const buffer = new Uint8Array(blob);
+  const parts: string[] = [];
+  let offset = 0;
+  while (buffer.byteLength > offset) {
+    parts.push(encodeBase64Url(buffer.subarray(offset, offset + CHUNK_SIZE)));
+    offset += CHUNK_SIZE;
+  }
+  return parts;
 }
 
 /** Remove/delete a binary object from the store with a given key that has been
@@ -334,6 +418,30 @@ export function getAsBlob(
 }
 
 /**
+ * Retrieve a binary object from the store as an object which which be safely
+ * converted into a JSON string.
+ *
+ * If there is no corresponding entry, the promise will resolve with a `null`.
+ *
+ * @example Getting a value
+ *
+ * ```ts
+ * import { getAsJSON } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * const json = JSON.stringify(await getAsJSON(kv, ["hello"]));
+ * await kv.close();
+ * ```
+ */
+export function getAsJSON(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
+): Promise<BlobJSON | null> {
+  return asJSON(kv, key, options);
+}
+
+/**
  * Retrieve a binary object from the store as a byte {@linkcode ReadableStream}.
  *
  * If there is no corresponding entry, the stream will provide no chunks.
@@ -399,11 +507,155 @@ export function getAsStream(
 export async function set(
   kv: Deno.Kv,
   key: Deno.KvKey,
-  blob: ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
+  blob: ArrayBufferLike | ReadableStream<Uint8Array> | Blob | File,
   options?: { expireIn?: number },
 ): Promise<void> {
   const items = await keys(kv, { prefix: [...key, BLOB_KEY] });
   let operation = batchedAtomic(kv);
   operation = await setBlob(operation, key, blob, items.length, options);
   await operation.commit();
+}
+
+/**
+ * Convert a typed array, array buffer, {@linkcode Blob} or {@linkcode File}
+ * into a form that can be converted into a JSON string.
+ *
+ * @example Convert a `Uint8Array` to JSON
+ *
+ * ```ts
+ * import { toJSON } from "jsr:/@kitsonk/kv-toolbox/blob";
+ *
+ * const u8 = new Uint8Array();
+ * const json = JSON.stringify(toJSON(u8));
+ * ```
+ */
+export async function toJSON(blob: File): Promise<BlobFileJSON>;
+/**
+ * Convert a typed array, array buffer, {@linkcode Blob} or {@linkcode File}
+ * into a form that can be converted into a JSON string.
+ *
+ * @example Convert a `Uint8Array` to JSON
+ *
+ * ```ts
+ * import { toJSON } from "jsr:/@kitsonk/kv-toolbox/blob";
+ *
+ * const u8 = new Uint8Array();
+ * const json = JSON.stringify(toJSON(u8));
+ * ```
+ */
+export async function toJSON(blob: Blob): Promise<BlobBlobJSON>;
+/**
+ * Convert a typed array, array buffer, {@linkcode Blob} or {@linkcode File}
+ * into a form that can be converted into a JSON string.
+ *
+ * @example Convert a `Uint8Array` to JSON
+ *
+ * ```ts
+ * import { toJSON } from "jsr:/@kitsonk/kv-toolbox/blob";
+ *
+ * const u8 = new Uint8Array();
+ * const json = JSON.stringify(toJSON(u8));
+ * ```
+ */
+export async function toJSON(blob: ArrayBufferLike): Promise<BlobBufferJSON>;
+export async function toJSON(
+  blob: ArrayBufferLike | Blob | File,
+): Promise<BlobJSON> {
+  new Uint8Array();
+  if (blob instanceof File) {
+    return {
+      meta: {
+        kind: "file",
+        type: blob.type,
+        lastModified: blob.lastModified,
+        name: blob.name,
+      },
+      parts: toParts(await blob.arrayBuffer()),
+    };
+  }
+  if (blob instanceof Blob) {
+    return {
+      meta: { kind: "blob", type: blob.type },
+      parts: toParts(await blob.arrayBuffer()),
+    };
+  }
+  return { meta: { kind: "buffer" }, parts: toParts(blob) };
+}
+
+/**
+ * Convert a previously encoded object into an instance of {@linkcode File}.
+ *
+ * @example Convert some JSON to a File
+ *
+ * ```ts
+ * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
+ *
+ * const file = toValue({
+ *   meta: {
+ *     type: "file",
+ *     lastModified: 1711349710546,
+ *     name: "test.bin",
+ *     type: "application/octet-stream",
+ *   },
+ *   parts: ["AQID"],
+ * });
+ * ```
+ */
+export function toValue(json: BlobFileJSON): File;
+/**
+ * Convert a previously encoded object into an instance of {@linkcode Blob}.
+ *
+ * @example Convert some JSON to a File
+ *
+ * ```ts
+ * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
+ *
+ * const blob = toValue({
+ *   meta: {
+ *     type: "blob",
+ *     type: "application/octet-stream",
+ *   },
+ *   parts: ["AQID"],
+ * });
+ * ```
+ */
+export function toValue(json: BlobBlobJSON): Blob;
+/**
+ * Convert a previously encoded object into an instance of
+ * {@linkcode Uint8Array}.
+ *
+ * @example Convert some JSON to a File
+ *
+ * ```ts
+ * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
+ *
+ * const u8 = toValue({ parts: ["AQID"] });
+ * ```
+ */
+export function toValue(json: BlobBufferJSON): Uint8Array;
+/**
+ * Convert a previously encoded object into an instance of a
+ * {@linkcode Uint8Array}, {@linkcode Blob}, or {@linkcode File}.
+ *
+ * @example Convert some JSON to a File
+ *
+ * ```ts
+ * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
+ *
+ * const u8 = toValue({ parts: ["AQID"] });
+ * ```
+ */
+export function toValue(json: BlobJSON): Uint8Array | Blob | File;
+export function toValue(json: BlobJSON): Uint8Array | Blob | File {
+  const parts = json.parts.map(decodeBase64Url);
+  if (json.meta.kind === "file") {
+    return new File(parts, json.meta.name, {
+      type: json.meta.type,
+      lastModified: json.meta.lastModified,
+    });
+  }
+  if (json.meta.kind === "blob") {
+    return new Blob(parts, { type: json.meta.type });
+  }
+  return concat(parts);
 }
