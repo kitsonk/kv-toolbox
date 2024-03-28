@@ -146,6 +146,8 @@
 
 import { timingSafeEqual } from "jsr:@std/crypto@0.220/timing_safe_equal";
 
+import { BLOB_KEY, BLOB_META_KEY } from "./blob_util.ts";
+
 function addIfUnique(set: Set<Deno.KvKeyPart>, item: Uint8Array) {
   for (const i of set) {
     if (ArrayBuffer.isView(i) && timingSafeEqual(i, item)) {
@@ -156,17 +158,29 @@ function addIfUnique(set: Set<Deno.KvKeyPart>, item: Uint8Array) {
 }
 
 function addOrIncrement(
-  map: Map<Deno.KvKeyPart, number>,
+  map: Map<Deno.KvKeyPart, { count: number; isBlob?: boolean }>,
   item: Uint8Array,
-  increment: boolean,
+  next: Deno.KvKeyPart | undefined,
 ) {
+  let count = 0;
+  let isBlob = false;
+  if (next) {
+    if (next === BLOB_KEY) {
+      isBlob = true;
+    } else if (next !== BLOB_META_KEY) {
+      count = 1;
+    }
+  }
   for (const [k, v] of map) {
     if (ArrayBuffer.isView(k) && timingSafeEqual(k, item)) {
-      map.set(k, increment ? v + 1 : v);
+      if (isBlob) {
+        v.isBlob = true;
+      }
+      v.count = count;
       return;
     }
   }
-  map.set(item, increment ? 1 : 0);
+  map.set(item, isBlob ? { count, isBlob } : { count });
 }
 
 /** Determines if one {@linkcode Deno.KvKeyPart} equals another. This is more
@@ -318,6 +332,9 @@ export async function unique(
       throw new TypeError(`Unexpected key length of ${key.length}.`);
     }
     const part = key[prefixLength];
+    if (part === BLOB_KEY || part === BLOB_META_KEY) {
+      continue;
+    }
     if (ArrayBuffer.isView(part)) {
       addIfUnique(prefixes, part);
     } else {
@@ -325,6 +342,17 @@ export async function unique(
     }
   }
   return [...prefixes].map((part) => [...prefix, part]);
+}
+
+/** Elements of an array that gets resolved when calling
+ * {@linkcode uniqueCount}. */
+export interface UniqueCountElement {
+  /** The key of the element. */
+  key: Deno.KvKey;
+  /** The number of sub-keys the key has. */
+  count: number;
+  /** Indicates if the value of the key is a kv-toolbox blob value. */
+  isBlob?: boolean;
 }
 
 /** Resolves with an array of unique sub keys/prefixes for the provided prefix
@@ -336,7 +364,11 @@ export async function unique(
  * where you are retrieving a list including counts and you want to know all the
  * unique _descendants_ of a key in order to be able to enumerate them.
  *
- * For example if you had the following keys stored in a datastore:
+ * If you omit a `prefix`, all unique root keys are resolved.
+ *
+ * @example
+ *
+ * If you had the following keys stored in a datastore:
  *
  * ```ts
  * ["a", "b"]
@@ -345,7 +377,7 @@ export async function unique(
  * ["a", "d", "f"]
  * ```
  *
- * And you would get the following results when using `unique()`:
+ * And you would get the following results when using `uniqueCount()`:
  *
  * ```ts
  * import { uniqueCount } from "jsr:@kitsonk/kv-toolbox/keys";
@@ -356,36 +388,46 @@ export async function unique(
  * // { key: ["a", "d"], count: 2 }
  * await kv.close();
  * ```
- *
- * If you omit a `prefix`, all unique root keys are resolved.
  */
 export async function uniqueCount(
   kv: Deno.Kv,
   prefix: Deno.KvKey = [],
   options?: Deno.KvListOptions,
-): Promise<{ key: Deno.KvKey; count: number }[]> {
+): Promise<UniqueCountElement[]> {
   const list = kv.list({ prefix }, options);
   const prefixLength = prefix.length;
-  const prefixCounts = new Map<Deno.KvKeyPart, number>();
+  const prefixCounts = new Map<
+    Deno.KvKeyPart,
+    { count: number; isBlob?: boolean }
+  >();
   for await (const { key } of list) {
     if (key.length <= prefixLength) {
       throw new TypeError(`Unexpected key length of ${key.length}.`);
     }
     const part = key[prefixLength];
+    if (part === BLOB_KEY || part === BLOB_META_KEY) {
+      continue;
+    }
+    const next = key[prefixLength + 1];
     if (ArrayBuffer.isView(part)) {
-      addOrIncrement(prefixCounts, part, key.length > (prefixLength + 1));
+      addOrIncrement(prefixCounts, part, next);
     } else {
       if (!prefixCounts.has(part)) {
-        prefixCounts.set(part, 0);
+        prefixCounts.set(part, { count: 0 });
       }
-      if (key.length > (prefixLength + 1)) {
-        prefixCounts.set(part, prefixCounts.get(part)! + 1);
+      if (next) {
+        const count = prefixCounts.get(part)!;
+        if (next === BLOB_KEY) {
+          count.isBlob = true;
+        } else if (next !== BLOB_META_KEY) {
+          count.count++;
+        }
       }
     }
   }
   return [...prefixCounts].map(([part, count]) => ({
     key: [...prefix, part],
-    count,
+    ...count,
   }));
 }
 

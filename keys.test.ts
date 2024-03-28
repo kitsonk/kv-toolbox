@@ -1,4 +1,5 @@
 import { assert, assertEquals, setup, teardown } from "./_test_util.ts";
+import { batchedAtomic } from "./batched_atomic.ts";
 
 import {
   equals,
@@ -116,6 +117,106 @@ Deno.test({
       { key: ["a", new Uint8Array([2, 3, 4])], count: 1 },
       { key: ["a", new Uint8Array([4, 5, 6])], count: 1 },
     ]);
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "uniqueCount - detects blobs",
+  async fn() {
+    const kv = await setup();
+    const res = await batchedAtomic(kv)
+      .set(["a"], "a")
+      .set(["a", "b"], "b")
+      .set(["a", "b", "c"], "c")
+      .set(["a", "d", "f", "g"], "g")
+      .set(["a", "h"], "h")
+      .setBlob(["a", "i"], new Uint8Array([1, 2, 3]))
+      .set(["a", "i", "j"], "j")
+      .set(["e"], "e")
+      .commit();
+    assert(res.every(({ ok }) => ok));
+
+    const actual = await uniqueCount(kv, ["a"]);
+
+    assertEquals(actual, [
+      { key: ["a", "b"], count: 1 },
+      { key: ["a", "d"], count: 1 },
+      { key: ["a", "h"], count: 0 },
+      { key: ["a", "i"], count: 1, isBlob: true },
+    ]);
+
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "uniqueCount - ignores blob keys",
+  async fn() {
+    const kv = await setup();
+    const res = await batchedAtomic(kv)
+      .set(["a"], "a")
+      .set(["a", "b"], "b")
+      .set(["a", "b", "c"], "c")
+      .set(["a", "d", "f", "g"], "g")
+      .set(["a", "h"], "h")
+      .setBlob(["a", "i"], new Uint8Array([1, 2, 3]))
+      .set(["a", "i", "j"], "j")
+      .set(["e"], "e")
+      .commit();
+    assert(res.every(({ ok }) => ok));
+
+    const actual = await uniqueCount(kv, ["a", "i"]);
+
+    assertEquals(actual, [{ key: ["a", "i", "j"], count: 0 }]);
+
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "uniqueCount - handles Uint8Array equality with blobs",
+  async fn() {
+    const kv = await setup();
+    const res = await batchedAtomic(kv)
+      .set(["a"], "a")
+      .setBlob(["a", new Uint8Array([2, 3, 4])], new Uint8Array([1, 2, 3]))
+      .set(["a", new Uint8Array([2, 3, 4]), "c"], "c")
+      .set(["a", new Uint8Array([4, 5, 6]), "c"], "c")
+      .set(["e"], "e")
+      .commit();
+    assert(res.every(({ ok }) => ok));
+
+    const actual = await uniqueCount(kv, ["a"]);
+
+    assertEquals(actual, [
+      { key: ["a", new Uint8Array([2, 3, 4])], count: 1, isBlob: true },
+      { key: ["a", new Uint8Array([4, 5, 6])], count: 1 },
+    ]);
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "uniqueCount - ignores blob keys with Uint8Array key parts",
+  async fn() {
+    const kv = await setup();
+    const res = await batchedAtomic(kv)
+      .set(["a"], "a")
+      .setBlob(["a", new Uint8Array([2, 3, 4])], new Uint8Array([1, 2, 3]))
+      .set(["a", new Uint8Array([2, 3, 4]), "c"], "c")
+      .set(["a", new Uint8Array([4, 5, 6]), "c"], "c")
+      .set(["e"], "e")
+      .commit();
+    assert(res.every(({ ok }) => ok));
+
+    const actual = await uniqueCount(kv, ["a", new Uint8Array([2, 3, 4])]);
+
+    assertEquals(actual, [{
+      key: ["a", new Uint8Array([2, 3, 4]), "c"],
+      count: 0,
+    }]);
+
     return teardown();
   },
 });
