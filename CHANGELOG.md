@@ -1,5 +1,9 @@
 # k-toolbox change log
 
+## Version 0.15.0
+
+- feat: add getMeta() for blobs (2d1e060)
+
 ## Version 0.14.0
 
 - feat: store size for blobs (34b8aa1)
