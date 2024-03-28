@@ -76,13 +76,14 @@ export interface BlobBlobJSON {
   meta: {
     kind: "blob";
     type: string;
+    size?: number;
   };
   parts: string[];
 }
 
 /** An interface to represent a array buffer or typed array value as JSON. */
 export interface BlobBufferJSON {
-  meta: { kind: "buffer" };
+  meta: { kind: "buffer"; size?: number };
   parts: string[];
 }
 
@@ -93,6 +94,7 @@ export interface BlobFileJSON {
     type: string;
     lastModified: number;
     name: string;
+    size?: number;
   };
   parts: string[];
 }
@@ -125,12 +127,15 @@ async function asBlob(
   const maybeMeta = await kv.get<BlobMeta>([...key, BLOB_META_KEY]);
   if (maybeMeta.value) {
     const { value } = maybeMeta;
-    return value.kind === "file"
-      ? new File(parts, value.name, {
+    if (value.kind === "file") {
+      return new File(parts, value.name, {
         lastModified: value.lastModified,
         type: value.type,
-      })
-      : new Blob(parts, { type: value.type });
+      });
+    }
+    if (value.kind === "blob") {
+      return new Blob(parts, { type: value.type });
+    }
   }
   return new Blob(parts);
 }

@@ -19,6 +19,7 @@
  * @module
  */
 
+import { BLOB_META_KEY } from "./blob.ts";
 import { BLOB_KEY, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
 
@@ -211,6 +212,7 @@ export class BatchedAtomicOperation {
         for (const item of items) {
           this.#queue.unshift(["delete", [item]]);
         }
+        this.#queue.unshift(["delete", [[...key, BLOB_META_KEY]]]);
       } else {
         if (method === "check") {
           hasCheck = true;

@@ -77,6 +77,7 @@ Deno.test({
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
       ["hello", "__kv_toolbox_blob__", 2],
+      ["hello", "__kv_toolbox_meta__"],
     ]);
     return teardown();
   },
@@ -89,7 +90,7 @@ Deno.test({
     const blob = new Uint8Array(65_536);
     window.crypto.getRandomValues(blob);
     await set(kv, ["hello"], blob);
-    assertEquals((await keys(kv, { prefix: ["hello"] })).length, 2);
+    assertEquals((await keys(kv, { prefix: ["hello"] })).length, 3);
     const operation = batchedAtomic(kv);
     await operation
       .deleteBlob(["hello"])

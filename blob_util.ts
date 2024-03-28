@@ -14,11 +14,16 @@ import { type BatchedAtomicOperation } from "./batched_atomic.ts";
 export type BlobMeta = {
   kind: "blob";
   type: string;
+  size?: number;
 } | {
   kind: "file";
   type: string;
   lastModified: number;
   name: string;
+  size?: number;
+} | {
+  kind: "buffer";
+  size?: number;
 };
 
 /**
@@ -71,7 +76,7 @@ function writeBlob(
   key: Deno.KvKey,
   blob: Blob,
   options?: { expireIn?: number },
-): Promise<[count: number, operation: BatchedAtomicOperation]> {
+): Promise<[count: number, operation: BatchedAtomicOperation, size: number]> {
   let meta: BlobMeta;
   if (blob instanceof File) {
     meta = {
@@ -79,9 +84,10 @@ function writeBlob(
       type: blob.type,
       lastModified: blob.lastModified,
       name: blob.name,
+      size: blob.size,
     };
   } else {
-    meta = { kind: "blob", type: blob.type };
+    meta = { kind: "blob", type: blob.type, size: blob.size };
   }
   operation.set([...key, BLOB_META_KEY], meta, options);
   return writeStream(operation, key, blob.stream(), options);
@@ -92,9 +98,11 @@ async function writeStream(
   key: Deno.KvKey,
   stream: ReadableStream<Uint8Array>,
   options?: { expireIn?: number },
-): Promise<[count: number, operation: BatchedAtomicOperation]> {
+): Promise<[count: number, operation: BatchedAtomicOperation, size: number]> {
   let start = 0;
+  let size = 0;
   for await (const chunk of stream) {
+    size += chunk.byteLength;
     [start, operation] = writeArrayBuffer(
       operation,
       key,
@@ -103,7 +111,7 @@ async function writeStream(
       options,
     );
   }
-  return [start, operation];
+  return [start, operation, size];
 }
 
 export async function setBlob(
@@ -114,8 +122,13 @@ export async function setBlob(
   options?: { expireIn?: number },
 ) {
   let count;
+  let size;
   if (blob instanceof ReadableStream) {
-    [count, operation] = await writeStream(operation, key, blob, options);
+    [count, operation, size] = await writeStream(operation, key, blob, options);
+    operation = operation.set([...key, BLOB_META_KEY], {
+      kind: "buffer",
+      size,
+    });
   } else if (blob instanceof Blob) {
     [count, operation] = await writeBlob(
       operation,
@@ -125,6 +138,10 @@ export async function setBlob(
     );
   } else {
     [count, operation] = writeArrayBuffer(operation, key, blob, 0, options);
+    operation = operation.set([...key, BLOB_META_KEY], {
+      kind: "buffer",
+      size: blob.byteLength,
+    });
   }
   operation = deleteKeys(operation, key, count, itemCount);
   return operation;

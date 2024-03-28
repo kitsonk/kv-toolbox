@@ -29,6 +29,7 @@ Deno.test({
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
       ["hello", "__kv_toolbox_blob__", 2],
+      ["hello", "__kv_toolbox_meta__"],
     ]);
     return teardown();
   },
@@ -46,6 +47,7 @@ Deno.test({
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
       ["hello", "__kv_toolbox_blob__", 2],
+      ["hello", "__kv_toolbox_meta__"],
     ]);
     return teardown();
   },
@@ -69,6 +71,7 @@ Deno.test({
     assertEquals(metaEntry.value, {
       kind: "blob",
       type: "application/octet-stream",
+      size: 65_536,
     });
     return teardown();
   },
@@ -97,6 +100,7 @@ Deno.test({
       type: "application/octet-stream",
       name: "test.bin",
       lastModified: 12345678,
+      size: 65_536,
     });
     return teardown();
   },
@@ -113,11 +117,15 @@ Deno.test({
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
       ["hello", "__kv_toolbox_blob__", 2],
+      ["hello", "__kv_toolbox_meta__"],
     ]);
     const blob2 = blob.slice(0, 1_000);
     await set(kv, ["hello"], blob2);
     const actual2 = await keys(kv, { prefix: ["hello"] });
-    assertEquals(actual2, [["hello", "__kv_toolbox_blob__", 1]]);
+    assertEquals(actual2, [
+      ["hello", "__kv_toolbox_blob__", 1],
+      ["hello", "__kv_toolbox_meta__"],
+    ]);
     return teardown();
   },
 });
@@ -193,7 +201,7 @@ Deno.test({
     const json = await getAsJSON(kv, ["hello"]);
     assert(json);
     assertEquals(json.parts.length, 2);
-    assertEquals(json.meta, { kind: "buffer" });
+    assertEquals(json.meta, { kind: "buffer", size: 65_536 });
     return teardown();
   },
 });
@@ -212,7 +220,11 @@ Deno.test({
     const json = await getAsJSON(kv, ["hello"]);
     assert(json);
     assertEquals(json.parts.length, 2);
-    assertEquals(json.meta, { kind: "blob", type: "application/octet-stream" });
+    assertEquals(json.meta, {
+      kind: "blob",
+      type: "application/octet-stream",
+      size: 65_536,
+    });
     return teardown();
   },
 });
@@ -239,6 +251,7 @@ Deno.test({
       type: "application/octet-stream",
       name: "test.bin",
       lastModified: 1711349710546,
+      size: 65_536,
     });
     return teardown();
   },
