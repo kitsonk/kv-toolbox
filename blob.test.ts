@@ -11,6 +11,7 @@ import {
   getAsBlob,
   getAsJSON,
   getAsStream,
+  getMeta,
   remove,
   set,
   toJSON,
@@ -253,6 +254,20 @@ Deno.test({
       lastModified: 1711349710546,
       size: 65_536,
     });
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "getMeta",
+  async fn() {
+    const kv = await setup();
+    const u8 = new Uint8Array(65_536);
+    window.crypto.getRandomValues(u8);
+    await set(kv, ["hello"], u8);
+    const meta = await getMeta(kv, ["hello"]);
+    assert(meta);
+    assertEquals(meta, { kind: "buffer", size: 65_536 });
     return teardown();
   },
 });

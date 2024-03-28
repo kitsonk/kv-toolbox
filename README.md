@@ -80,6 +80,11 @@ Retrieves a blob value based on the provided key and returns a byte
 `ReadableStream` which the binary data can be read from. If there is no value
 present, the stream will be empty.
 
+### `getMeta()`
+
+Retrieves the meta data of a blob value based on the key provided. If the data
+isn't available `null` is resolved.
+
 ### `remove()`
 
 Similar to `Deno.Kv.prototype.delete()`, in that it deletes a blob key and value

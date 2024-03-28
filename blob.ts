@@ -168,11 +168,20 @@ async function asJSON(
     parts: parts.map(encodeBase64Url),
   };
   // deno-lint-ignore no-explicit-any
-  const maybeMeta = await kv.get<any>([...key, BLOB_META_KEY]);
+  const maybeMeta = await kv.get<any>([...key, BLOB_META_KEY], options);
   if (maybeMeta.value) {
     json.meta = maybeMeta.value;
   }
   return json;
+}
+
+async function asMeta(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined },
+): Promise<BlobMeta | null> {
+  const maybeEntry = await kv.get<BlobMeta>([...key, BLOB_META_KEY], options);
+  return maybeEntry.value;
 }
 
 function asStream(
@@ -444,6 +453,29 @@ export function getAsJSON(
   options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
 ): Promise<BlobJSON | null> {
   return asJSON(kv, key, options);
+}
+
+/**
+ * Retrieve a binary object's meta data from the store.
+ *
+ * If there is no meta data available, `null` will be resolved.
+ *
+ * @example Getting meta data
+ *
+ * ```ts
+ * import { getMeta } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * const maybeMeta = await getMeta(kv, ["hello"]));
+ * await kv.close();
+ * ```
+ */
+export function getMeta(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
+): Promise<BlobMeta | null> {
+  return asMeta(kv, key, options);
 }
 
 /**
