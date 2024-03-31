@@ -187,7 +187,7 @@ function addOrIncrement(
  * focused than just comparison as it compares `Uint8Array` parts in a way that
  * avoids potential code exploits.
  *
- * **Example**
+ * @example
  *
  * ```ts
  * import { partEquals } from "jsr:@kitsonk/kv-toolbox/keys";
@@ -217,7 +217,7 @@ export function partEquals(a: Deno.KvKeyPart, b: Deno.KvKeyPart): boolean {
  * focused than a deeply equals comparison and compares key parts that are
  * `Uint8Array` in a way that avoids potential code exploits.
  *
- * **Example**
+ * @example
  *
  * ```ts
  * import { equals } from "jsr:@kitsonk/kv-toolbox/keys";
@@ -245,7 +245,7 @@ export function equals(a: Deno.KvKey, b: Deno.KvKey): boolean {
 
 /** Determines if one {@linkcode Deno.KvKey} matches the prefix of another.
  *
- * **Example**
+ * @example
  *
  * ```ts
  * import { startsWith } from "jsr:@kitsonk/kv-toolbox/keys";
@@ -267,7 +267,7 @@ export function startsWith(key: Deno.KvKey, prefix: Deno.KvKey): boolean {
 /** Return an array of keys that match the `selector` in the target `kv`
  * store.
  *
- * **Example**
+ * @example
  *
  * ```ts
  * import { keys } from "jsr:@kitsonk/kv-toolbox/keys";
@@ -296,7 +296,9 @@ export async function keys(
  * where you are retrieving a list and you want to know all the unique
  * _descendants_ of a key in order to be able to enumerate them.
  *
- * For example if you had the following keys stored in a datastore:
+ * @example
+ *
+ * The following keys stored in a datastore:
  *
  * ```ts
  * ["a", "b"]
@@ -305,7 +307,7 @@ export async function keys(
  * ["a", "d", "f"]
  * ```
  *
- * And you would get the following results when using `unique()`:
+ * The following results when using `unique()`:
  *
  * ```ts
  * import { unique } from "jsr:@kitsonk/kv-toolbox/keys";
@@ -461,7 +463,7 @@ export interface KeyTree {
  * is supplied, keys that match the prefix. Each child node indicates if it
  * also has a value and any children of that node.
  *
- * **Example**
+ * @example
  *
  * If you had the following keys stored in a datastore:
  *
