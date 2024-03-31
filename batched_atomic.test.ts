@@ -30,6 +30,47 @@ Deno.test({
 });
 
 Deno.test({
+  name: "batched atomic handles blob checks",
+  async fn() {
+    const kv = await setup();
+    let value = new Uint8Array(65_536);
+    window.crypto.getRandomValues(value);
+    const res = await set(kv, ["hello"], value);
+    assert(res.ok);
+    value = new Uint8Array(65_536);
+    window.crypto.getRandomValues(value);
+    const actual = await batchedAtomic(kv)
+      .checkBlob({ key: ["hello"], versionstamp: res.versionstamp })
+      .setBlob(["hello"], value)
+      .commit();
+    assertEquals(actual.length, 1);
+    assert(actual[0].ok);
+    assert(actual[0].versionstamp !== res.versionstamp);
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "batched atomic handles blob check fail",
+  async fn() {
+    const kv = await setup();
+    let value = new Uint8Array(65_536);
+    window.crypto.getRandomValues(value);
+    const res = await set(kv, ["hello"], value);
+    assert(res.ok);
+    value = new Uint8Array(65_536);
+    window.crypto.getRandomValues(value);
+    const actual = await batchedAtomic(kv)
+      .checkBlob({ key: ["hello"], versionstamp: null })
+      .setBlob(["hello"], value)
+      .commit();
+    assertEquals(actual.length, 1);
+    assert(!actual[0].ok);
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "batch atomic deals with big transactions",
   async fn() {
     const kv = await setup();

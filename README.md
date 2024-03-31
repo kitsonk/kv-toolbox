@@ -19,8 +19,12 @@ transaction into as many separate commits as necessary.
 Similar to `Deno.Kv#atomic()`, but will batch individual transactions across as
 many atomic operations as necessary.
 
-There are two additional methods supported on batched atomics not supported by
+There are three additional methods supported on batched atomics not supported by
 Deno KV atomic transactions:
+
+- `.checkBlob({ key, versionstamp })` - Allows performing checks on blob entries
+  previously set with blob's `set()` function or via `.setBlob()` as part of a
+  transaction.
 
 - `.setBlob(key, value, options?)` - Allows setting of arbitrarily size blob
   values as part of an atomic transaction. The values can be a byte

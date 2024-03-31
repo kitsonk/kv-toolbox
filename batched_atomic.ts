@@ -3,6 +3,9 @@
  * {@linkcode Deno.Kv.prototype.atomic} but will work around the per atomic
  * transaction limits imposed by Deno KV.
  *
+ * It also supports `setBlob()` and `checkBlob()` to allow setting of checking
+ * of kv-toolbox blob values as part of a transaction.
+ *
  * In the past, Deno KV had very low limits (like 10 mutations per transaction)
  * but those limits have been changed to far more reasonable levels, so in most
  * cases {@linkcode batchedAtomic} is not needed. The only _advantage_ is that
@@ -10,7 +13,7 @@
  * having to deal with a limit failure in code. But most users should consider
  * just dealing with {@linkcode Deno.Kv.prototype.atomic} directly.
  *
- * **Example**
+ * @example
  *
  * ```ts
  * import { batchedAtomic } from "jsr:/@kitsonk/kv-toolbox/batched_atomic";
@@ -28,8 +31,7 @@
 
 import { serialize } from "node:v8";
 
-import { BLOB_META_KEY } from "./blob.ts";
-import { BLOB_KEY, setBlob } from "./blob_util.ts";
+import { BLOB_KEY, BLOB_META_KEY, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
 
 interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
@@ -115,6 +117,28 @@ export class BatchedAtomicOperation {
    */
   check(...checks: Deno.AtomicCheck[]): this {
     return this.#enqueue("check", checks);
+  }
+
+  /**
+   * Add to the operation a check that ensures that the versionstamp of the blob
+   * key-value pair in the KV store matches the given versionstamp. If the check
+   * fails, the entire operation will fail and no mutations will be performed
+   * during the commit.
+   *
+   * The blob should have previously been set via kv-toolbox's `set()` or as
+   * part of an batched atomic operation via `setBlob()`.
+   *
+   * If there are additional batches of atomic operations to perform, they will
+   * be abandoned.
+   */
+  checkBlob(...checks: Deno.AtomicCheck[]): this {
+    return this.#enqueue(
+      "check",
+      checks.map(({ key, versionstamp }) => ({
+        key: [...key, BLOB_META_KEY],
+        versionstamp,
+      })),
+    );
   }
 
   /**
@@ -253,7 +277,7 @@ export class BatchedAtomicOperation {
         ];
         const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
         await setBlob(this, key, value, items.length, options);
-        this.#queue = [...this.#queue, ...queue];
+        this.#queue.push(...queue);
       } else if (method === "deleteBlob") {
         const [key] = args as [Deno.KvKey];
         const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
