@@ -54,19 +54,23 @@ The blob can be a byte `ReadableStream`, array buffer like, a `Blob` or a
 When the value is being set is a `Blob` or `File` the meta data will also be
 preserved (like the `type` property).
 
+The resolved `Deno.KvCommitResult` will contain the `versionstamp` of the blob's
+meta data, which can be used for consistency checks.
+
 ### `get()`
 
-Similar to `Deno.Kv.prototype.get()`, in that it retrieves a blob value based on
+Similar to `Deno.Kv.prototype.get()`, in that it retrieves a blob entry based on
 the provided key. If a previous blob value has been set with `set()`, it will be
 retrieved.
 
-By default the value is resolved as a `Uint8Array` but if the option `stream` is
-set to `true`, then a byte `ReadableStream` is provided to read out the blob. If
-the option `blob` is set to `true`, then a `Blob` or `File` will be resolved. If
-the value originally set was a `File` or `Blob` the resolved instance will be
-that of the original value including restoring the additional properties, like
-`type`. If the value wasn't a `Blob` or `File` originally, the function will
-resolve to a `Blob` with an empty `type`.
+By default the value of the entry is resolved as a `Uint8Array` but if the
+option `stream` is set to `true`, then a byte `ReadableStream` is provided to
+read out the blob. If the option `blob` is set to `true`, then a `Blob` or
+`File` will be the value of the entry. If the value originally set was a `File`
+or `Blob` the resolved value instance will be that of the original value
+including restoring the additional properties, like `type`. If the value wasn't
+a `Blob` or `File` originally, the function will resolve to a `Blob` with an
+empty `type`.
 
 ### `getAsBlob()`
 
@@ -89,8 +93,8 @@ present, the stream will be empty.
 
 ### `getMeta()`
 
-Retrieves the meta data of a blob value based on the key provided. If the data
-isn't available `null` is resolved.
+Retrieves the meta data entry of a blob value based on the key provided. The
+entries `versionstamp` is considered the version of the blob.
 
 ### `remove()`
 

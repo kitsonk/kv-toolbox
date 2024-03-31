@@ -25,7 +25,9 @@ Deno.test({
     const kv = await setup();
     const blob = new Uint8Array(65_536);
     window.crypto.getRandomValues(blob);
-    await set(kv, ["hello"], blob);
+    const res = await set(kv, ["hello"], blob);
+    assert(res.ok);
+    assert(res.versionstamp);
     const actual = await keys(kv, { prefix: ["hello"] });
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
@@ -43,7 +45,8 @@ Deno.test({
     const data = new Uint8Array(65_536);
     window.crypto.getRandomValues(data);
     const blob = new Blob([data]);
-    await set(kv, ["hello"], blob.stream());
+    const res = await set(kv, ["hello"], blob.stream());
+    assert(res.ok);
     const actual = await keys(kv, { prefix: ["hello"] });
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
@@ -61,7 +64,8 @@ Deno.test({
     const data = new Uint8Array(65_536);
     window.crypto.getRandomValues(data);
     const blob = new Blob([data], { type: "application/octet-stream" });
-    await set(kv, ["hello"], blob);
+    const res = await set(kv, ["hello"], blob);
+    assert(res.ok);
     const actual = await keys(kv, { prefix: ["hello"] });
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
@@ -88,7 +92,8 @@ Deno.test({
       type: "application/octet-stream",
       lastModified: 12345678,
     });
-    await set(kv, ["hello"], blob);
+    const res = await set(kv, ["hello"], blob);
+    assert(res.ok);
     const actual = await keys(kv, { prefix: ["hello"] });
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
@@ -113,7 +118,8 @@ Deno.test({
     const kv = await setup();
     const blob = new Uint8Array(65_536);
     window.crypto.getRandomValues(blob);
-    await set(kv, ["hello"], blob);
+    const res = await set(kv, ["hello"], blob);
+    assert(res.ok);
     const actual = await keys(kv, { prefix: ["hello"] });
     assertEquals(actual, [
       ["hello", "__kv_toolbox_blob__", 1],
@@ -136,10 +142,11 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const blob = await Deno.readFile("./_fixtures/png-1mb.png");
-    await set(kv, ["hello"], blob);
+    const res = await set(kv, ["hello"], blob);
+    assert(res.ok);
     const actual = await get(kv, ["hello"]);
-    assert(actual);
-    assert(timingSafeEqual(actual, blob));
+    assert(actual.value);
+    assert(timingSafeEqual(actual.value, blob));
     return teardown();
   },
 });
@@ -152,8 +159,8 @@ Deno.test({
     window.crypto.getRandomValues(blob);
     await set(kv, ["hello"], blob);
     const actual = await get(kv, ["hello"]);
-    assert(actual);
-    assert(timingSafeEqual(actual, blob));
+    assert(actual.value);
+    assert(timingSafeEqual(actual.value, blob));
     return teardown();
   },
 });
@@ -165,9 +172,10 @@ Deno.test({
     const blob = new Uint8Array(65_536);
     window.crypto.getRandomValues(blob);
     await set(kv, ["hello"], blob);
-    const stream = get(kv, ["hello"], { stream: true });
+    const entry = await get(kv, ["hello"], { stream: true });
+    assert(entry.value);
     let count = 0;
-    for await (const _ of stream) {
+    for await (const _ of entry.value) {
       count++;
     }
     assertEquals(count, 2);
@@ -267,7 +275,7 @@ Deno.test({
     await set(kv, ["hello"], u8);
     const meta = await getMeta(kv, ["hello"]);
     assert(meta);
-    assertEquals(meta, { kind: "buffer", size: 65_536 });
+    assertEquals(meta.value, { kind: "buffer", size: 65_536 });
     return teardown();
   },
 });
@@ -343,12 +351,15 @@ Deno.test({
     });
     await set(kv, ["hello"], file);
     const actual = await get(kv, ["hello"], { blob: true });
-    assert(actual instanceof File);
-    assertEquals(actual.name, "png-1mb.png");
-    assertEquals(actual.type, "image/png");
-    assertEquals(actual.lastModified, file.lastModified);
+    assert(actual.value instanceof File);
+    assertEquals(actual.value.name, "png-1mb.png");
+    assertEquals(actual.value.type, "image/png");
+    assertEquals(actual.value.lastModified, file.lastModified);
     assert(
-      timingSafeEqual(await actual.arrayBuffer(), await file.arrayBuffer()),
+      timingSafeEqual(
+        await actual.value.arrayBuffer(),
+        await file.arrayBuffer(),
+      ),
     );
     return teardown();
   },

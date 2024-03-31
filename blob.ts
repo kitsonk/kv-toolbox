@@ -6,11 +6,20 @@
  * sub-keys to store the complete value, including preserving meta data
  * associated with {@linkcode Blob} and {@linkcode File} instances.
  *
- * The {@linkcode get}, {@linkcode getAsBlob} and {@linkcode getAsStream}
- * functions reverse that process, and {@linkcode remove} function will delete
- * the key, sub-keys and values.
+ * The {@linkcode get}, {@linkcode getAsBlob}, {@linkcode getAsStream}, and
+ * {@linkcode getAsJSON} functions reverse that process. {@linkcode get}
+ * resolves with a standard {@linkcode Deno.KvEntryMaybe}, while the other
+ * `get*` methods just return or resolve with the value.
  *
- * In addition, if a {@linkcode Blob} or {@linkcode File} is provided on set,
+ * {@linkcode remove} function will delete the key, sub-keys and values.
+ *
+ * {@linkcode getMeta} resolves with the meta data associated with a blob entry
+ * stored in Deno KV. This information is useful for understanding the blob
+ * value without having to read the blob out of the datastore. If the blob does
+ * not exist `null` is resolved.
+ *
+ * {@linkcode toValue} and {@linkcode toJSON} are functions which allow
+ * serializing blob like values to and from JSON.
  *
  * @example Basic usage
  *
@@ -20,8 +29,8 @@
  * const kv = await Deno.openKv();
  * const data = new TextEncoder().encode("hello deno!");
  * await set(kv, ["hello"], data);
- * const ab = await get(kv, ["hello"]);
- * // do something with ab
+ * const maybeAb = await get(kv, ["hello"]);
+ * // do something with maybeAb
  * await remove(kv, ["hello"]);
  * await kv.close();
  * ```
@@ -105,6 +114,7 @@ async function asBlob(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined },
+  maybeMeta: Deno.KvEntryMaybe<BlobMeta>,
 ): Promise<File | Blob | null> {
   const list = kv.list<Uint8Array>({ prefix: [...key, BLOB_KEY] }, {
     ...options,
@@ -124,7 +134,6 @@ async function asBlob(
   if (!found) {
     return null;
   }
-  const maybeMeta = await kv.get<BlobMeta>([...key, BLOB_META_KEY]);
   if (maybeMeta.value) {
     const { value } = maybeMeta;
     if (value.kind === "file") {
@@ -175,13 +184,12 @@ async function asJSON(
   return json;
 }
 
-async function asMeta(
+function asMeta(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined },
-): Promise<BlobMeta | null> {
-  const maybeEntry = await kv.get<BlobMeta>([...key, BLOB_META_KEY], options);
-  return maybeEntry.value;
+): Promise<Deno.KvEntryMaybe<BlobMeta>> {
+  return kv.get<BlobMeta>([...key, BLOB_META_KEY], options);
 }
 
 function asStream(
@@ -258,7 +266,7 @@ function toParts(blob: ArrayBufferLike): string[] {
 /** Remove/delete a binary object from the store with a given key that has been
  * {@linkcode set}.
  *
- * **Example**
+ * @example
  *
  * ```ts
  * import { remove } from "jsr:@kitsonk/kv-toolbox/blob";
@@ -281,20 +289,22 @@ export async function remove(kv: Deno.Kv, key: Deno.KvKey): Promise<void> {
   }
 }
 
-/** Retrieve a binary object from the store with a given key that has been
+/** Retrieve a binary object entry from the store with a given key that has been
  * {@linkcode set}.
  *
- * When setting the option `stream` to `true`, a {@linkcode ReadableStream} is
- * returned to read the blob in chunks of {@linkcode Uint8Array}
+ * When setting the option `stream` to `true`, a {@linkcode Deno.KvEntryMaybe}
+ * is resolved with a value of {@linkcode ReadableStream} to read the blob in
+ * chunks of {@linkcode Uint8Array}.
  *
  * When setting the option `blob` to `true`, the promise resolves with a
- * {@linkcode Blob}, {@linkcode File}, or `null`. If the original file had been
- * a {@linkcode File} or {@linkcode Blob} it the resolved value will reflect
- * that original value including its properties. If it was not, it will be a
- * {@linkcode Blob} with a type of `""`.
+ * {@linkcode Deno.KvEntryMaybe} with a value of {@linkcode Blob} or
+ * {@linkcode File}. If the original file had been a {@linkcode File} or
+ * {@linkcode Blob} it the resolved value will reflect that original value
+ * including its properties. If it was not, it will be a {@linkcode Blob} with a
+ * type of `""`.
  *
- * Otherwise the function resolves with a single {@linkcode Uint8Array} or
- * `null`.
+ * Otherwise the function resolves with a {@linkcode Deno.KvEntryMaybe} with a
+ * value of {@linkcode Uint8Array}.
  *
  * @example
  *
@@ -313,12 +323,12 @@ export function get(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined; stream: true },
-): ReadableStream<Uint8Array>;
+): Promise<Deno.KvEntryMaybe<ReadableStream<Uint8Array>>>;
 /** Retrieve a binary object from the store with a given key that has been
  * {@linkcode set}.
  *
  * When setting the option `stream` to `true`, a {@linkcode ReadableStream} is
- * returned to read the blob in chunks of {@linkcode Uint8Array}
+ * returned to read the blob in chunks of {@linkcode Uint8Array}.
  *
  * When setting the option `blob` to `true`, the promise resolves with a
  * {@linkcode Blob}, {@linkcode File}, or `null`. If the original file had been
@@ -344,7 +354,7 @@ export function get(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined; blob: true },
-): Promise<File | Blob | null>;
+): Promise<Deno.KvEntryMaybe<Blob | File>>;
 /** Retrieve a binary object from the store with a given key that has been
  * {@linkcode set}.
  *
@@ -379,8 +389,8 @@ export function get(
     blob?: boolean;
     stream?: boolean;
   },
-): Promise<Uint8Array | null>;
-export function get(
+): Promise<Deno.KvEntryMaybe<Uint8Array>>;
+export async function get(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: {
@@ -388,15 +398,19 @@ export function get(
     blob?: boolean;
     stream?: boolean;
   } = {},
-):
-  | ReadableStream<Uint8Array>
-  | Promise<Uint8Array | null>
-  | Promise<File | Blob | null> {
-  return options.stream
+): Promise<
+  Deno.KvEntryMaybe<ReadableStream<Uint8Array> | Uint8Array | File | Blob>
+> {
+  const meta = await asMeta(kv, key, options);
+  const value = options.stream
     ? asStream(kv, key, options)
     : options.blob
-    ? asBlob(kv, key, options)
-    : asUint8Array(kv, key, options);
+    ? await asBlob(kv, key, options, meta)
+    : await asUint8Array(kv, key, options);
+  if (!value || !meta.value) {
+    return { key: [...key], value: null, versionstamp: null };
+  }
+  return { key: [...key], value, versionstamp: meta.versionstamp };
 }
 
 /**
@@ -423,12 +437,13 @@ export function get(
  * await kv.close();
  * ```
  */
-export function getAsBlob(
+export async function getAsBlob(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
 ): Promise<Blob | File | null> {
-  return asBlob(kv, key, options);
+  const maybeMeta = await asMeta(kv, key, options);
+  return asBlob(kv, key, options, maybeMeta);
 }
 
 /**
@@ -456,9 +471,8 @@ export function getAsJSON(
 }
 
 /**
- * Retrieve a binary object's meta data from the store.
- *
- * If there is no meta data available, `null` will be resolved.
+ * Retrieve a binary object's meta data from the store as a
+ * {@linkcode Deno.KvEntryMaybe}.
  *
  * @example Getting meta data
  *
@@ -470,12 +484,12 @@ export function getAsJSON(
  * await kv.close();
  * ```
  */
-export function getMeta(
+export async function getMeta(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
-): Promise<BlobMeta | null> {
-  return asMeta(kv, key, options);
+): Promise<Deno.KvEntryMaybe<BlobMeta>> {
+  return await asMeta(kv, key, options);
 }
 
 /**
@@ -546,11 +560,15 @@ export async function set(
   key: Deno.KvKey,
   blob: ArrayBufferLike | ReadableStream<Uint8Array> | Blob | File,
   options?: { expireIn?: number },
-): Promise<void> {
+): Promise<Deno.KvCommitResult> {
   const items = await keys(kv, { prefix: [...key, BLOB_KEY] });
   let operation = batchedAtomic(kv);
   operation = await setBlob(operation, key, blob, items.length, options);
-  await operation.commit();
+  const res = await operation.commit();
+  if (!res[0].ok) {
+    throw new Error("Unexpected error when setting blob.");
+  }
+  return res[0];
 }
 
 /**
