@@ -4,8 +4,15 @@ A set of tools for working with Deno KV.
 
 ## Batched Atomic
 
-A set of APIs for dealing with the limitation of atomic commit sized in Deno KV,
-where currently only 10 operations operations can be part of a commit.
+A set of APIs for dealing with the limitation of atomic commit sizes in Deno KV.
+Deno KV limits the number of checks and mutations as well as the overall byte
+size of each commit and the byte size of the keys.
+
+These limits are currently high for most workloads, but if you are dealing with
+large transactions where if you need to perform more than 100 checks, 1000
+mutations, using over 80k of key sizes or have an overall payload of over 800k,
+then `batchedAtomic()` will avoid the transaction throwing by breaking up the
+transaction into as many separate commits as necessary.
 
 ### `batchedAtomic()`
 
