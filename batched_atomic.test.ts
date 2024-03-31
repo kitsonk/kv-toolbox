@@ -30,6 +30,21 @@ Deno.test({
 });
 
 Deno.test({
+  name: "batch atomic deals with big transactions",
+  async fn() {
+    const kv = await setup();
+    const op = batchedAtomic(kv);
+    for (let i = 0; i < 4000; i++) {
+      op.set([i.toString().repeat(500)], i.toString().repeat(4000));
+    }
+    const actual = await op.commit();
+    assertEquals(actual.length, 94);
+    assert(actual.every(({ ok }) => ok));
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "batched atomic handles failed check",
   async fn() {
     const kv = await setup();

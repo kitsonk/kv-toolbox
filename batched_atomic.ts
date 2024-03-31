@@ -1,12 +1,19 @@
 /**
  * Provides the function {@linkcode batchedAtomic} which is like
- * `Deno.Kv#atomic()` but will work around the limitation 10 transactions per
- * atomic operation.
+ * {@linkcode Deno.Kv.prototype.atomic} but will work around the per atomic
+ * transaction limits imposed by Deno KV.
+ *
+ * In the past, Deno KV had very low limits (like 10 mutations per transaction)
+ * but those limits have been changed to far more reasonable levels, so in most
+ * cases {@linkcode batchedAtomic} is not needed. The only _advantage_ is that
+ * you can make arbitrarily large atomic transactions and not worry about
+ * having to deal with a limit failure in code. But most users should consider
+ * just dealing with {@linkcode Deno.Kv.prototype.atomic} directly.
  *
  * **Example**
  *
  * ```ts
- * import { batchedAtomic } from "jsr:@kitsonk/kv-toolbox/batched_atomic";
+ * import { batchedAtomic } from "jsr:/@kitsonk/kv-toolbox/batched_atomic";
  *
  * const kv = await Deno.openKv();
  * await batchedAtomic(kv)
@@ -19,12 +26,11 @@
  * @module
  */
 
+import { serialize } from "node:v8";
+
 import { BLOB_META_KEY } from "./blob.ts";
 import { BLOB_KEY, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
-
-/** The default batch size for atomic operations. */
-const BATCH_SIZE = 10;
 
 interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
   deleteBlob(key: Deno.KvKey): this;
@@ -38,11 +44,34 @@ interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
 
 type AtomicOperationKeys = keyof KVToolboxAtomicOperation;
 
-/** The class that encapsulates the batched atomic operations, which works
- * around the limitation of 10 transactions per operation. */
+// These are indicated from deno/ext/kv/lib.rs and are current as of 524e451
+// We have to use slightly less numbers, because we can only estimate byte
+// lengths and in some cases we underestimate the size of keys and values
+const MAX_CHECKS = 99;
+const MAX_MUTATIONS = 999;
+const MAX_TOTAL_MUTATION_SIZE_BYTES = 800_000;
+const MAX_TOTAL_KEY_SIZE_BYTES = 80_000;
+
+function getByteLength(value: unknown): number {
+  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+    return value.byteLength;
+  }
+  if (value instanceof Deno.KvU64) {
+    return 8;
+  }
+  return serialize(value).byteLength;
+}
+
+/**
+ * The class that encapsulates the batched atomic operations. Works around
+ * limitations imposed by Deno KV related to individual atomic operations.
+ */
 export class BatchedAtomicOperation {
-  #batchSize: number;
   #kv: Deno.Kv;
+  #maxChecks: number;
+  #maxBytes: number;
+  #maxKeyBytes: number;
+  #maxMutations: number;
   // deno-lint-ignore no-explicit-any
   #queue: [AtomicOperationKeys, any[]][] = [];
 
@@ -56,10 +85,23 @@ export class BatchedAtomicOperation {
 
   constructor(
     kv: Deno.Kv,
-    { batchSize = BATCH_SIZE }: { batchSize?: number } = {},
+    {
+      maxChecks = MAX_CHECKS,
+      maxMutations = MAX_MUTATIONS,
+      maxBytes = MAX_TOTAL_MUTATION_SIZE_BYTES,
+      maxKeyBytes = MAX_TOTAL_KEY_SIZE_BYTES,
+    }: {
+      maxChecks?: number;
+      maxMutations?: number;
+      maxBytes?: number;
+      maxKeyBytes?: number;
+    } = {},
   ) {
     this.#kv = kv;
-    this.#batchSize = batchSize;
+    this.#maxChecks = maxChecks;
+    this.#maxBytes = maxBytes;
+    this.#maxKeyBytes = maxKeyBytes;
+    this.#maxMutations = maxMutations;
   }
 
   /**
@@ -193,21 +235,27 @@ export class BatchedAtomicOperation {
       return Promise.resolve([]);
     }
     const results: Promise<Deno.KvCommitResult | Deno.KvCommitError>[] = [];
-    let count = 0;
+    let checks = 0;
+    let mutations = 0;
+    let payloadBytes = 0;
+    let keyBytes = 0;
     let operation = this.#kv.atomic();
     let hasCheck = false;
     while (this.#queue.length) {
       const [method, args] = this.#queue.shift()!;
-      count++;
       if (method === "setBlob") {
         const queue = this.#queue;
         this.#queue = [];
-        const [key, value, options] = args;
+        const [key, value, options] = args as [
+          Deno.KvKey,
+          ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
+          { expireIn?: number } | undefined,
+        ];
         const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
         await setBlob(this, key, value, items.length, options);
         this.#queue = [...this.#queue, ...queue];
       } else if (method === "deleteBlob") {
-        const [key] = args;
+        const [key] = args as [Deno.KvKey];
         const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
         for (const item of items) {
           this.#queue.unshift(["delete", [item]]);
@@ -215,23 +263,73 @@ export class BatchedAtomicOperation {
         this.#queue.unshift(["delete", [[...key, BLOB_META_KEY]]]);
       } else {
         if (method === "check") {
+          checks++;
+          for (const { key } of args as Deno.AtomicCheck[]) {
+            const len = key.reduce(
+              (prev: number, part: Deno.KvKeyPart) =>
+                prev + getByteLength(part),
+              0,
+            );
+            payloadBytes += len;
+            keyBytes += len;
+          }
           hasCheck = true;
+        } else {
+          mutations++;
+          if (method === "mutate") {
+            for (const mutation of args as Deno.KvMutation[]) {
+              const keyLen = getByteLength(mutation.key);
+              payloadBytes += keyLen;
+              keyBytes += keyLen;
+              if (mutation.type === "set") {
+                payloadBytes += getByteLength(mutation.value);
+              } else if (mutation.type !== "delete") {
+                payloadBytes += 8;
+              }
+            }
+          } else if (method === "max" || method === "min" || method === "sum") {
+            const [key] = args as [Deno.KvKey];
+            const keyLen = getByteLength(key);
+            keyBytes += keyLen;
+            payloadBytes += keyLen + 8;
+          } else if (method === "set") {
+            const [key, value] = args as [Deno.KvKey, unknown];
+            const keyLen = getByteLength(key);
+            keyBytes += keyLen;
+            payloadBytes += keyLen + getByteLength(value);
+          } else if (method === "delete") {
+            const [key] = args as [Deno.KvKey];
+            const keyLen = getByteLength(key);
+            keyBytes += keyLen;
+            payloadBytes += keyLen;
+          } else if (method === "enqueue") {
+            const [value] = args as [unknown];
+            payloadBytes += getByteLength(value);
+          }
+        }
+        if (
+          checks > this.#maxChecks || mutations > this.#maxMutations ||
+          payloadBytes > this.#maxBytes || keyBytes > this.#maxKeyBytes
+        ) {
+          const rp = operation.commit();
+          results.push(rp);
+          if (hasCheck) {
+            const result = await rp;
+            if (!result.ok) {
+              break;
+            }
+          }
+          checks = 0;
+          mutations = 0;
+          payloadBytes = 0;
+          keyBytes = 0;
+          operation = this.#kv.atomic();
         }
         // deno-lint-ignore no-explicit-any
         (operation[method] as any).apply(operation, args);
-        if (count >= this.#batchSize || !this.#queue.length) {
+        if (!this.#queue.length) {
           const rp = operation.commit();
           results.push(rp);
-          if (this.#queue.length) {
-            if (hasCheck) {
-              const result = await rp;
-              if (!result.ok) {
-                break;
-              }
-            }
-            count = 0;
-            operation = this.#kv.atomic();
-          }
         }
       }
     }
@@ -239,19 +337,49 @@ export class BatchedAtomicOperation {
   }
 }
 
-/** Similar to `Deno.Kv#atomic()` but deals with the limit of transactions
- * allowed per atomic operation.
+/**
+ * Options which can be adjusted when using a batched atomic.
+ *
+ * These all default to the current values used by Deno, so typically these
+ * never need to be set unless you specifically know what you are doing!
+ */
+export interface BatchAtomicOptions {
+  /**
+   * Deno KV limits the number of checks per atomic transaction. This changes
+   * the default of 99.
+   */
+  maxChecks?: number;
+  /**
+   * Deno KV limits the number of mutations per atomic transactions. This
+   * changes the default of 999.
+   */
+  maxMutations?: number;
+  /**
+   * Deno KV limits the overall byte size of an atomic transaction, which
+   * includes data for checks and mutations. This changes the default of 800k.
+   *
+   * There is also the limit of 64K per value.
+   */
+  maxBytes?: number;
+  /**
+   * Deno KV limits the total byte size of keys associated with an atomic
+   * transaction. This changes the default of 80k.
+   */
+  maxKeyBytes?: number;
+}
+
+/**
+ * Similar to {@linkcode Deno.Kv.prototype.atomic} but deals with the limits of
+ * transactions imposed by Deno KV.
  *
  * When committing the transaction, the operation is broken up in batches and
  * each commit result from each batch is returned, unless there is a commit
  * error, where any pending batched operations will be abandoned and the last
  * item in the commit result array will be the error.
- *
- * By default, the batch size is `10` but can be supplied in the `options`
- * property of `batchSize`. */
+ */
 export function batchedAtomic(
   kv: Deno.Kv,
-  options?: { batchSize?: number },
+  options?: BatchAtomicOptions,
 ): BatchedAtomicOperation {
   return new BatchedAtomicOperation(kv, options);
 }
