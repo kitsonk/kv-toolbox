@@ -5,7 +5,7 @@
  * @module
  */
 
-import { type BatchedAtomicOperation } from "./batched_atomic.ts";
+import type { BatchedAtomicOperation } from "./batched_atomic.ts";
 
 /**
  * When a blob entry was originally a {@linkcode Blob} or {@linkcode File} a
