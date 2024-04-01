@@ -89,6 +89,12 @@ function will resolve to a `Blob` with an empty `type`.
 Retrieve a blob value based on the provided key and resolve with its JSON
 representation.
 
+### `getAsResponse()`
+
+Retrieve a blob entry as a `Response` which will stream the value from the store
+to a client. If the entry does not exist, the response will be a
+`404 Not Found`. There are several options to configure how the response is set.
+
 ### `getAsStream()`
 
 Retrieves a blob value based on the provided key and returns a byte

@@ -10,6 +10,7 @@ import {
   get,
   getAsBlob,
   getAsJSON,
+  getAsResponse,
   getAsStream,
   getMeta,
   remove,
@@ -196,6 +197,103 @@ Deno.test({
       count++;
     }
     assertEquals(count, 2);
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "getAsResponse - set response correctly",
+  async fn() {
+    const kv = await setup();
+    const blob = new Blob(
+      [`<DOCTYPE! html><html><body>Hello!</body></html>`],
+      { type: "text/html" },
+    );
+    await set(kv, ["index.html"], blob);
+    const actual = await getAsResponse(kv, ["index.html"]);
+    assertEquals(actual.headers.get("content-type"), "text/html");
+    assertEquals(actual.headers.get("content-length"), "47");
+    assertEquals([...actual.headers].length, 2);
+    assertEquals(actual.status, 200);
+    assertEquals(actual.statusText, "OK");
+    assertEquals(
+      await actual.text(),
+      `<DOCTYPE! html><html><body>Hello!</body></html>`,
+    );
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "getAsResponse - missing entry",
+  async fn() {
+    const kv = await setup();
+    const actual = await getAsResponse(kv, ["index.html"]);
+    assertEquals([...actual.headers].length, 0);
+    assertEquals(actual.status, 404);
+    assertEquals(actual.statusText, "Not Found");
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "getAsResponse - missing entry uses options",
+  async fn() {
+    const kv = await setup();
+    const actual = await getAsResponse(kv, ["index.html"], {
+      notFoundBody: "not found",
+      notFoundHeaders: { "content-type": "text/plain" },
+    });
+    assertEquals(actual.headers.get("content-type"), "text/plain");
+    assertEquals([...actual.headers].length, 1);
+    assertEquals(actual.status, 404);
+    assertEquals(actual.statusText, "Not Found");
+    assertEquals(await actual.text(), "not found");
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "getAsResponse - processes headers init",
+  async fn() {
+    const kv = await setup();
+    const blob = new Blob(
+      [`<DOCTYPE! html><html><body>Hello!</body></html>`],
+      { type: "text/html" },
+    );
+    await set(kv, ["index.html"], blob);
+    const actual = await getAsResponse(kv, ["index.html"], {
+      headers: { "X-KV-Toolbox": "custom" },
+    });
+    assertEquals(actual.headers.get("content-type"), "text/html");
+    assertEquals(actual.headers.get("content-length"), "47");
+    assertEquals(actual.headers.get("x-kv-toolbox"), "custom");
+    assertEquals([...actual.headers].length, 3);
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "getAsResponse - contentDisposition is true",
+  async fn() {
+    const kv = await setup();
+    const data = await Deno.readFile("./_fixtures/png-1mb.png");
+    const stats = await Deno.stat("./_fixtures/png-1mb.png");
+    const file = new File([data], "png-1mb.png", {
+      lastModified: stats.mtime?.getTime(),
+      type: "image/png",
+    });
+    await set(kv, ["hello"], file);
+    const actual = await getAsResponse(kv, ["hello"], {
+      contentDisposition: true,
+    });
+    assertEquals(actual.headers.get("content-type"), "image/png");
+    assertEquals(actual.headers.get("content-length"), "1050986");
+    assertEquals(
+      actual.headers.get("content-disposition"),
+      'attachment; filename="png-1mb.png"',
+    );
+    assertEquals([...actual.headers].length, 3);
     return teardown();
   },
 });

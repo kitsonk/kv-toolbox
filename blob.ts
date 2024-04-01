@@ -11,6 +11,10 @@
  * resolves with a standard {@linkcode Deno.KvEntryMaybe}, while the other
  * `get*` methods just return or resolve with the value.
  *
+ * The {@linkcode getAsResponse} will resolve a blob entry as a
+ * {@linkcode Response} using meta information to set appropriate headers. If
+ * the entry is not found, the response will be set to a `404 Not Found`.
+ *
  * {@linkcode remove} function will delete the key, sub-keys and values.
  *
  * {@linkcode getMeta} resolves with the meta data associated with a blob entry
@@ -62,7 +66,7 @@ import {
   decodeBase64Url,
   encodeBase64Url,
 } from "jsr:@std/encoding@0.220/base64url";
-export { concat } from "jsr:@std/bytes@0.220/concat";
+import { extension } from "jsr:@std/media-types@0.220/extension";
 
 import { batchedAtomic } from "./batched_atomic.ts";
 import {
@@ -490,6 +494,105 @@ export async function getMeta(
   options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
 ): Promise<Deno.KvEntryMaybe<BlobMeta>> {
   return await asMeta(kv, key, options);
+}
+
+/** Options which can be used when calling {@linkcode getAsResponse}. */
+export interface GetAsResponseOptions {
+  consistency?: Deno.KvConsistencyLevel | undefined;
+  /**
+   * Set an appropriate content disposition header on the response. This will
+   * cause a browser to usually treat the response as a download.
+   *
+   * If a filename is available, it will be used, otherwise a filename and
+   * extension derived from the key and content type.
+   */
+  contentDisposition?: boolean | undefined;
+  /** Any headers init to be used in conjunction with creating the request. */
+  headers?: HeadersInit | undefined;
+  /** If the blob entry is not present, utilize this body when responding. This
+   * defaults to `null`. */
+  notFoundBody?: BodyInit | undefined;
+  /** If the blob entry is not present, utilize this headers init when
+   * responding. */
+  notFoundHeaders?: HeadersInit | undefined;
+}
+
+/**
+ * Retrieve a blob value as a {@linkcode Response} which is suitable for sending
+ * as a response to an HTTP request. This will read the blob out of the KV store
+ * as a stream and set information in the response based on what is available
+ * from the source.
+ *
+ * If there are other headers required, they can be supplied in the options.
+ *
+ * Setting the `contentDisposition` to `true` will cause the function to resolve
+ * with a {@linkcode Response} which has the `Content-Disposition` set as an
+ * attachment with an appropriate file name. This is designed to send a response
+ * that instructs the browser to attempt to download the requested entry.
+ *
+ * If the blob entry is not present, the response will be set to a
+ * `404 Not Found` with a `null` body. The not found body and headers can be
+ * set in the options.
+ *
+ * @example Serving static content from Deno KV
+ *
+ * Creates a simple web server where the content has already been set in the
+ * Deno KV datastore as `Blob`s. This is a silly example just to show
+ * functionality and would be terribly inefficient in production:
+ *
+ * ```ts
+ * import { getAsResponse } from "jsr:/@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ *
+ * const server = Deno.serve((req) => {
+ *   const key = new URL(req.url)
+ *     .pathname
+ *     .slice(1)
+ *     .split("/");
+ *   key[key.length - 1] = key[key.length - 1] || "index.html";
+ *   return getAsResponse(kv, key);
+ * });
+ *
+ * server.finished.then(() => kv.close());
+ * ```
+ */
+export async function getAsResponse(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: GetAsResponseOptions = {},
+): Promise<Response> {
+  const maybeMeta = await asMeta(kv, key, options);
+  if (!maybeMeta.value) {
+    const { notFoundBody = null, notFoundHeaders: headers } = options;
+    return new Response(notFoundBody, {
+      status: 404,
+      statusText: "Not Found",
+      headers,
+    });
+  }
+  const headers = new Headers(options.headers);
+  const contentType =
+    (maybeMeta.value.kind !== "buffer" && maybeMeta.value.type) ||
+    "application/octet-stream";
+  headers.set("content-type", contentType);
+  if (maybeMeta.value.size) {
+    headers.set("content-length", String(maybeMeta.value.size));
+  }
+  if (options.contentDisposition) {
+    const filename = maybeMeta.value.kind === "file" && maybeMeta.value.name ||
+      `${
+        typeof key[key.length - 1] !== "object" &&
+          String(key[key.length - 1]) || "file"
+      }.${extension(contentType) ?? "bin"}`;
+    headers.set("content-disposition", `attachment; filename="${filename}"`);
+  }
+  const body = asStream(kv, key, options);
+  return new Response(body, {
+    headers,
+    status: 200,
+    statusText: "OK",
+  });
 }
 
 /**
