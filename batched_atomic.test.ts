@@ -79,7 +79,7 @@ Deno.test({
       op.set([i.toString().repeat(500)], i.toString().repeat(4000));
     }
     const actual = await op.commit();
-    assertEquals(actual.length, 94);
+    assertEquals(actual.length, 99);
     assert(actual.every(({ ok }) => ok));
     return teardown();
   },

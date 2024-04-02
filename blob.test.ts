@@ -153,6 +153,20 @@ Deno.test({
 });
 
 Deno.test({
+  name: "set - very large blob",
+  async fn() {
+    const kv = await setup();
+    const blob = await Deno.readFile("./_fixtures/mp4-7mb.mp4");
+    const res = await set(kv, ["hello"], blob);
+    assert(res.ok);
+    const actual = await get(kv, ["hello"]);
+    assert(actual.value);
+    assert(timingSafeEqual(actual.value, blob));
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "get - assembles blob value as array buffer",
   async fn() {
     const kv = await setup();

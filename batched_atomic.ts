@@ -49,8 +49,8 @@ type AtomicOperationKeys = keyof KVToolboxAtomicOperation;
 // lengths and in some cases we underestimate the size of keys and values
 const MAX_CHECKS = 99;
 const MAX_MUTATIONS = 999;
-const MAX_TOTAL_MUTATION_SIZE_BYTES = 800_000;
-const MAX_TOTAL_KEY_SIZE_BYTES = 80_000;
+const MAX_TOTAL_MUTATION_SIZE_BYTES = 750_000;
+const MAX_TOTAL_KEY_SIZE_BYTES = 75_000;
 
 let serialize: ((value: unknown) => { byteLength: number }) | undefined =
   undefined;
