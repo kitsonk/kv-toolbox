@@ -62,6 +62,7 @@
  * @module
  */
 
+import { concat } from "jsr:@std/bytes@0.220/concat";
 import {
   decodeBase64Url,
   encodeBase64Url,
@@ -77,7 +78,6 @@ import {
   setBlob,
 } from "./blob_util.ts";
 import { keys } from "./keys.ts";
-import { concat } from "./_test_util.ts";
 
 export { BLOB_KEY, BLOB_META_KEY, type BlobMeta } from "./blob_util.ts";
 

@@ -8,6 +8,15 @@
     "./keys": "./keys.ts",
     "./ndjson": "./ndjson.ts"
   },
+  "publish": {
+    "exclude": [
+      "*.test.ts",
+      ".github",
+      ".vscode",
+      "_fixtures",
+      "_test_util.ts"
+    ]
+  },
   "tasks": {
     "coverage": "deno coverage --lcov --output=cov.lcov ./cov",
     "test": "deno test --allow-read --allow-write --unstable-kv --parallel",
