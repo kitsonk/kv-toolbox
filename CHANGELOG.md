@@ -1,5 +1,10 @@
 # kv-toolbox change log
 
+## Version 0.16.2
+
+- fix: change max atomic transaction byte limit (b89d680)
+- chore: exclude tests from publish (bf75d36)
+
 ## Version 0.16.1
 
 - feat: make batched_atomic loadable on web (798d991)
