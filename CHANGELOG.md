@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.16.1
+
+- feat: make batched_atomic loadable on web (798d991)
+
 ## Version 0.16.0
 
 - feat: re-work batching for batchedAtomic to align to current Deno KV (e3c8136)
