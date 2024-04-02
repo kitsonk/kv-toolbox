@@ -29,8 +29,6 @@
  * @module
  */
 
-import { serialize } from "node:v8";
-
 import { BLOB_KEY, BLOB_META_KEY, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
 
@@ -54,6 +52,9 @@ const MAX_MUTATIONS = 999;
 const MAX_TOTAL_MUTATION_SIZE_BYTES = 800_000;
 const MAX_TOTAL_KEY_SIZE_BYTES = 80_000;
 
+let serialize: ((value: unknown) => { byteLength: number }) | undefined =
+  undefined;
+
 function getByteLength(value: unknown): number {
   if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
     return value.byteLength;
@@ -61,7 +62,7 @@ function getByteLength(value: unknown): number {
   if (value instanceof Deno.KvU64) {
     return 8;
   }
-  return serialize(value).byteLength;
+  return serialize!(value).byteLength;
 }
 
 /**
@@ -257,6 +258,9 @@ export class BatchedAtomicOperation {
   async commit(): Promise<(Deno.KvCommitResult | Deno.KvCommitError)[]> {
     if (!this.#queue.length) {
       return Promise.resolve([]);
+    }
+    if (!serialize) {
+      serialize = (await import("node:v8")).serialize;
     }
     const results: Promise<Deno.KvCommitResult | Deno.KvCommitError>[] = [];
     let checks = 0;
