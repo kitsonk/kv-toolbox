@@ -31,6 +31,7 @@
 
 import { BLOB_KEY, BLOB_META_KEY, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
+import { sizeOf } from "./size_of.ts";
 
 interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
   deleteBlob(key: Deno.KvKey): this;
@@ -51,19 +52,6 @@ const MAX_CHECKS = 99;
 const MAX_MUTATIONS = 999;
 const MAX_TOTAL_MUTATION_SIZE_BYTES = 750_000;
 const MAX_TOTAL_KEY_SIZE_BYTES = 75_000;
-
-let serialize: ((value: unknown) => { byteLength: number }) | undefined =
-  undefined;
-
-function getByteLength(value: unknown): number {
-  if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
-    return value.byteLength;
-  }
-  if (value instanceof Deno.KvU64) {
-    return 8;
-  }
-  return serialize!(value).byteLength;
-}
 
 /**
  * The class that encapsulates the batched atomic operations. Works around
@@ -259,9 +247,6 @@ export class BatchedAtomicOperation {
     if (!this.#queue.length) {
       return Promise.resolve([]);
     }
-    if (!serialize) {
-      serialize = (await import("node:v8")).serialize;
-    }
     const results: Promise<Deno.KvCommitResult | Deno.KvCommitError>[] = [];
     let checks = 0;
     let mutations = 0;
@@ -294,8 +279,7 @@ export class BatchedAtomicOperation {
           checks++;
           for (const { key } of args as Deno.AtomicCheck[]) {
             const len = key.reduce(
-              (prev: number, part: Deno.KvKeyPart) =>
-                prev + getByteLength(part),
+              (prev: number, part: Deno.KvKeyPart) => prev + sizeOf(part),
               0,
             );
             payloadBytes += len;
@@ -306,33 +290,33 @@ export class BatchedAtomicOperation {
           mutations++;
           if (method === "mutate") {
             for (const mutation of args as Deno.KvMutation[]) {
-              const keyLen = getByteLength(mutation.key);
+              const keyLen = sizeOf(mutation.key);
               payloadBytes += keyLen;
               keyBytes += keyLen;
               if (mutation.type === "set") {
-                payloadBytes += getByteLength(mutation.value);
+                payloadBytes += sizeOf(mutation.value);
               } else if (mutation.type !== "delete") {
                 payloadBytes += 8;
               }
             }
           } else if (method === "max" || method === "min" || method === "sum") {
             const [key] = args as [Deno.KvKey];
-            const keyLen = getByteLength(key);
+            const keyLen = sizeOf(key);
             keyBytes += keyLen;
             payloadBytes += keyLen + 8;
           } else if (method === "set") {
             const [key, value] = args as [Deno.KvKey, unknown];
-            const keyLen = getByteLength(key);
+            const keyLen = sizeOf(key);
             keyBytes += keyLen;
-            payloadBytes += keyLen + getByteLength(value);
+            payloadBytes += keyLen + sizeOf(value);
           } else if (method === "delete") {
             const [key] = args as [Deno.KvKey];
-            const keyLen = getByteLength(key);
+            const keyLen = sizeOf(key);
             keyBytes += keyLen;
             payloadBytes += keyLen;
           } else if (method === "enqueue") {
             const [value] = args as [unknown];
-            payloadBytes += getByteLength(value);
+            payloadBytes += sizeOf(value);
           }
         }
         if (
