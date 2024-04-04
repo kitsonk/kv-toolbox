@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.16.3
+
+- fix: use sizeOf instead of V8 serialize (7db9e63)
+
 ## Version 0.16.2
 
 - fix: change max atomic transaction byte limit (b89d680)
