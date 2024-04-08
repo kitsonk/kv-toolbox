@@ -1,5 +1,11 @@
 # kv-toolbox change log
 
+## Version 0.17.0
+
+- feat: add `toBlob()` (9b874dc)
+- fix: type check blob set values (f2aa18c)
+- fix: harden reading blob parts out of store (89e7de3)
+
 ## Version 0.16.3
 
 - fix: use sizeOf instead of V8 serialize (7db9e63)
