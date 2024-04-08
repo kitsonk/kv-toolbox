@@ -123,19 +123,29 @@ async function asBlob(
   options: { consistency?: Deno.KvConsistencyLevel | undefined },
   maybeMeta: Deno.KvEntryMaybe<BlobMeta>,
 ): Promise<File | Blob | null> {
-  const list = kv.list<Uint8Array>({ prefix: [...key, BLOB_KEY] }, {
+  const prefix = [...key, BLOB_KEY];
+  const prefixLength = prefix.length;
+  const list = kv.list<Uint8Array>({ prefix }, {
     ...options,
     batchSize: BATCH_SIZE,
   });
   let found = false;
   const parts: Uint8Array[] = [];
+  let i = 1;
   for await (const item of list) {
-    if (item.value) {
+    if (
+      item.value && item.key.length === prefixLength + 1 &&
+      item.key[prefixLength] === i
+    ) {
+      i++;
       found = true;
       if (!(item.value instanceof Uint8Array)) {
         throw new TypeError("KV value is not a Uint8Array.");
       }
       parts.push(item.value);
+    } else {
+      // encountered an unexpected key part, abort
+      break;
     }
   }
   if (!found) {
@@ -161,19 +171,28 @@ async function asJSON(
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined },
 ): Promise<BlobJSON | null> {
-  const list = kv.list<Uint8Array>({ prefix: [...key, BLOB_KEY] }, {
+  const prefix = [...key, BLOB_KEY];
+  const prefixLength = prefix.length;
+  const list = kv.list<Uint8Array>({ prefix }, {
     ...options,
     batchSize: BATCH_SIZE,
   });
   let found = false;
   const parts: Uint8Array[] = [];
+  let i = 1;
   for await (const item of list) {
-    if (item.value) {
+    if (
+      item.value && item.key.length === prefixLength + 1 &&
+      item.key[prefixLength] === i
+    ) {
+      i++;
       found = true;
       if (!(item.value instanceof Uint8Array)) {
         throw new TypeError("KV value is not a Uint8Array");
       }
       parts.push(item.value);
+    } else {
+      break;
     }
   }
   if (!found) {
@@ -204,6 +223,9 @@ function asStream(
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined },
 ) {
+  const prefix = [...key, BLOB_KEY];
+  const prefixLength = prefix.length;
+  let i = 1;
   let list: Deno.KvListIterator<Uint8Array> | null = null;
   return new ReadableStream({
     type: "bytes",
@@ -213,19 +235,26 @@ function asStream(
         return controller.error(new Error("Internal error - list not set"));
       }
       const next = await list.next();
-      if (next.value?.value) {
+      if (
+        next.value && next.value.value &&
+        next.value.key.length === prefixLength + 1 &&
+        next.value.key[prefixLength] === i
+      ) {
+        i++;
         if (next.value.value instanceof Uint8Array) {
           controller.enqueue(next.value.value);
         } else {
           controller.error(new TypeError("KV value is not a Uint8Array."));
         }
+      } else {
+        controller.close();
       }
       if (next.done) {
         controller.close();
       }
     },
     start() {
-      list = kv.list<Uint8Array>({ prefix: [...key, BLOB_KEY] }, {
+      list = kv.list<Uint8Array>({ prefix }, {
         ...options,
         batchSize: BATCH_SIZE,
       });
@@ -238,14 +267,21 @@ async function asUint8Array(
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined },
 ): Promise<Uint8Array | null> {
-  const list = kv.list<Uint8Array>({ prefix: [...key, BLOB_KEY] }, {
+  const prefix = [...key, BLOB_KEY];
+  const prefixLength = prefix.length;
+  const list = kv.list<Uint8Array>({ prefix }, {
     ...options,
     batchSize: BATCH_SIZE,
   });
   let found = false;
   let value = new Uint8Array();
+  let i = 1;
   for await (const item of list) {
-    if (item.value) {
+    if (
+      item.value && item.key.length === prefixLength + 1 &&
+      item.key[prefixLength] === i
+    ) {
+      i++;
       found = true;
       if (!(item.value instanceof Uint8Array)) {
         throw new TypeError("KV value is not a Uint8Array.");
@@ -254,6 +290,8 @@ async function asUint8Array(
       v.set(value, 0);
       v.set(item.value, value.length);
       value = v;
+    } else {
+      break;
     }
   }
   return found ? value : null;
