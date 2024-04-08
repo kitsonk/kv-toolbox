@@ -1,6 +1,7 @@
 import {
   assert,
   assertEquals,
+  assertRejects,
   setup,
   teardown,
   timingSafeEqual,
@@ -162,6 +163,20 @@ Deno.test({
     const actual = await get(kv, ["hello"]);
     assert(actual.value);
     assert(timingSafeEqual(actual.value, blob));
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "set - rejects TypeError with invalid value",
+  async fn() {
+    const kv = await setup();
+    const blob = "kv-toolbox".repeat(1000);
+    await assertRejects(
+      // @ts-ignore to make the test type check
+      () => set(kv, ["hello"], blob),
+      "Blob must be typed array, array buffer, ReadableStream, Blob, or File",
+    );
     return teardown();
   },
 });

@@ -136,12 +136,19 @@ export async function setBlob(
       blob,
       options,
     );
-  } else {
+  } else if (
+    ArrayBuffer.isView(blob) || blob instanceof ArrayBuffer ||
+    blob instanceof SharedArrayBuffer
+  ) {
     [count, operation] = writeArrayBuffer(operation, key, blob, 0, options);
     operation = operation.set([...key, BLOB_META_KEY], {
       kind: "buffer",
       size: blob.byteLength,
     });
+  } else {
+    throw new TypeError(
+      "Blob must be typed array, array buffer, ReadableStream, Blob, or File",
+    );
   }
   operation = deleteKeys(operation, key, count, itemCount);
   return operation;
