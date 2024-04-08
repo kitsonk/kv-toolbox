@@ -16,6 +16,7 @@ import {
   getMeta,
   remove,
   set,
+  toBlob,
   toJSON,
   toValue,
 } from "./blob.ts";
@@ -535,5 +536,22 @@ Deno.test({
     const kv = await setup();
     await remove(kv, ["hello"]);
     return teardown();
+  },
+});
+
+Deno.test({
+  name: "toBlob() - default type",
+  async fn() {
+    const actual = toBlob("some sort of string");
+    assertEquals(actual.type, "text/plain");
+    assertEquals(await actual.text(), "some sort of string");
+  },
+});
+
+Deno.test({
+  name: "toBlob() - provided type",
+  fn() {
+    const actual = toBlob("some sort of string", "text/html");
+    assertEquals(actual.type, "text/html");
   },
 });

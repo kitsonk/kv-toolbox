@@ -25,6 +25,9 @@
  * {@linkcode toValue} and {@linkcode toJSON} are functions which allow
  * serializing blob like values to and from JSON.
  *
+ * {@linkcode toBlob} is a convenience function to convert string values into
+ * {@linkcode Blob}s for storage via {@linkcode set}.
+ *
  * @example Basic usage
  *
  * ```ts
@@ -672,6 +675,29 @@ export async function set(
     throw new Error("Unexpected error when setting blob.");
   }
   return res[0];
+}
+
+/**
+ * A convenience function which converts a string value to a {@linkcode Blob}
+ * which can be stored via {@link set}. The function optionally takes a `type`
+ * which represents the media type of the string (e.g. `"text/plain"` or
+ * `"text/html"`). `type` defaults to `"text/plain"`.
+ *
+ * @example Storing and retrieving a blob string
+ *
+ * ```ts
+ * import { getAsBlob, set, toBlob } from "jsr:@kitsonk/kv-toolbox/blob";
+ *
+ * const kv = await Deno.openKv();
+ * const blob = toBlob("some big string");
+ * await set(kv, ["hello"], blob);
+ * const value = await getAsBlob(kv, ["hello"]);
+ * const str = await value.text();
+ * await kv.close();
+ * ```
+ */
+export function toBlob(value: string, type = "text/plain"): Blob {
+  return new Blob([value], { type });
 }
 
 /**

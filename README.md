@@ -112,6 +112,11 @@ Similar to `Deno.Kv.prototype.delete()`, in that it deletes a blob key and value
 form the data store. If a blob value isn't stored for the given key, it resolves
 in a noop.
 
+### `toBlob()`
+
+A convenience function which takes a string value, and optional media type, and
+converts it into a `Blob` which then can be stored via `set()`.
+
 ### `toJSON()`
 
 Convert an array buffer, typed array, `Blob` or `File` to a format which can be
