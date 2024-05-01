@@ -1,3 +1,4 @@
+import { Serializer } from "jsr:@denostack/superserial@0.3.5";
 import { serialize } from "node:v8";
 import { sizeOf } from "./size_of.ts";
 
@@ -19,5 +20,15 @@ Deno.bench({
   name: "sizeOf()",
   fn() {
     sizeOf(fixture);
+  },
+});
+
+const serializer = new Serializer();
+const encoder = new TextEncoder();
+
+Deno.bench({
+  name: "superserial serializer.serialize()",
+  fn() {
+    encoder.encode(serializer.serialize(fixture)).byteLength;
   },
 });
