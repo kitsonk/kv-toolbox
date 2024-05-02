@@ -154,6 +154,20 @@ export interface KvArrayJSON<T = unknown> {
 }
 
 /**
+ * A representation of an {@linkcode DataView} Deno KV value. The value is
+ * the bytes of the buffer encoded as a URL safe base64 string, for example a
+ * data view with the byte values of `[ 1, 2, 3 ]` would be:
+ *
+ * ```json
+ * { "type": "DataView", "value": "AQID" }
+ * ```
+ */
+export interface KvDataViewJSON {
+  type: "DataView";
+  value: string;
+}
+
+/**
  * A representation of a {@linkcode Date} Deno KV value. The value is the
  * [ISO string representation](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)
  * of the date.
@@ -325,6 +339,7 @@ export type KvValueJSON =
   | KvArrayJSON
   | KvBigIntJSON
   | KvBooleanJSON
+  | KvDataViewJSON
   | KvDateJSON
   | KvErrorJSON
   | KvKvU64JSON
@@ -489,6 +504,8 @@ export function valueToJSON<TA extends TypedArray>(
 ): KvTypedArrayJSON<TA[typeof Symbol.toStringTag]>;
 /** Serialize an {@linkcode ArrayBuffer} value to JSON. */
 export function valueToJSON(value: ArrayBufferLike): KvArrayBufferJSON;
+/** Serialize an {@linkcode DataView} value to JSON. */
+export function valueToJSON(value: DataView): KvDataViewJSON;
 /** Serialize a `undefined` value to JSON. */
 export function valueToJSON(value: undefined): KvUndefinedJSON;
 /** Serialize a object value to JSON. */
@@ -507,6 +524,9 @@ export function valueToJSON(value: unknown): KvValueJSON {
     case "object":
       if (Array.isArray(value)) {
         return { type: "Array", value: [...value] };
+      }
+      if (value instanceof DataView) {
+        return { type: "DataView", value: encodeBase64Url(value.buffer) };
       }
       if (ArrayBuffer.isView(value)) {
         return typedArrayToJSON(value);
@@ -689,6 +709,11 @@ export function toValue(json: KvBigIntJSON): bigint;
  */
 export function toValue(json: KvBooleanJSON): boolean;
 /**
+ * Deserialize {@linkcode KvDataViewJSON} to a {@linkcode DataView} which can
+ * be stored in a Deno KV store.
+ */
+export function toValue(json: KvDataViewJSON): DataView;
+/**
  * Deserialize {@linkcode KvDateJSON} to a {@linkcode Date} which can be stored
  * in a Deno KV store.
  */
@@ -777,6 +802,8 @@ export function toValue(json: KvValueJSON): unknown {
     case "Uint8Array":
     case "Uint8ClampedArray":
       return toTypedArray(json);
+    case "DataView":
+      return new DataView(decodeBase64Url(json.value).buffer);
     case "Date":
       return new Date(json.value);
     case "Error":

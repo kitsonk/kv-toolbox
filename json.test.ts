@@ -52,6 +52,18 @@ Deno.test({
 });
 
 Deno.test({
+  name: "toValue - DataView",
+  fn() {
+    assert(
+      timingSafeEqual(
+        toValue({ type: "DataView", value: "AQID" }),
+        new DataView(new Uint8Array([1, 2, 3]).buffer),
+      ),
+    );
+  },
+});
+
+Deno.test({
   name: "toValue - Date",
   fn() {
     const actual = toValue({ type: "Date", value: "2023-12-16T17:24:00.000Z" });
@@ -387,6 +399,18 @@ Deno.test({
     assertEquals(actual, {
       type: "boolean",
       value: false,
+    });
+  },
+});
+
+Deno.test({
+  name: "valueToJSON - DataView",
+  fn() {
+    const dataView = new DataView(new Uint8Array([1, 2, 3]).buffer);
+    const actual = valueToJSON(dataView);
+    assertEquals(actual, {
+      type: "DataView",
+      value: "AQID",
     });
   },
 });
