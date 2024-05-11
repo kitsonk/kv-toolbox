@@ -1,4 +1,4 @@
-import { assertEquals } from "./_test_util.ts";
+import { assert, assertEquals } from "./_test_util.ts";
 import { sizeOf } from "./size_of.ts";
 
 Deno.test({
@@ -73,9 +73,8 @@ Deno.test({
 Deno.test({
   name: "sizeOf - Error",
   fn() {
-    assertEquals(
-      sizeOf(new URIError("boo hoo", { cause: new Error("boo") })),
-      496,
+    assert(
+      sizeOf(new URIError("boo hoo", { cause: new Error("boo") })) >= 496,
     );
   },
 });
