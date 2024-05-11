@@ -42,6 +42,26 @@ Deno.test({
 });
 
 Deno.test({
+  name: "set - sets a DataView value",
+  async fn() {
+    const kv = await setup();
+    const u8 = new Uint8Array(65_536);
+    window.crypto.getRandomValues(u8);
+    const blob = new DataView(u8.buffer);
+    const res = await set(kv, ["hello"], blob);
+    assert(res.ok);
+    assert(res.versionstamp);
+    const actual = await keys(kv, { prefix: ["hello"] });
+    assertEquals(actual, [
+      ["hello", "__kv_toolbox_blob__", 1],
+      ["hello", "__kv_toolbox_blob__", 2],
+      ["hello", "__kv_toolbox_meta__"],
+    ]);
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "set - sets a blob value as a stream",
   async fn() {
     const kv = await setup();

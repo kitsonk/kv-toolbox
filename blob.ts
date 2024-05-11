@@ -74,10 +74,15 @@ import { extension } from "jsr:@std/media-types@0.220/extension";
 
 import { batchedAtomic } from "./batched_atomic.ts";
 import {
+  asMeta,
+  asStream,
+  asUint8Array,
+  BATCH_SIZE,
   BLOB_KEY,
   BLOB_META_KEY,
   type BlobMeta,
   CHUNK_SIZE,
+  removeBlob,
   setBlob,
 } from "./blob_util.ts";
 import { keys } from "./keys.ts";
@@ -114,8 +119,6 @@ export interface BlobFileJSON {
   };
   parts: string[];
 }
-
-const BATCH_SIZE = 10;
 
 async function asBlob(
   kv: Deno.Kv,
@@ -210,93 +213,6 @@ async function asJSON(
   return json;
 }
 
-function asMeta(
-  kv: Deno.Kv,
-  key: Deno.KvKey,
-  options: { consistency?: Deno.KvConsistencyLevel | undefined },
-): Promise<Deno.KvEntryMaybe<BlobMeta>> {
-  return kv.get<BlobMeta>([...key, BLOB_META_KEY], options);
-}
-
-function asStream(
-  kv: Deno.Kv,
-  key: Deno.KvKey,
-  options: { consistency?: Deno.KvConsistencyLevel | undefined },
-) {
-  const prefix = [...key, BLOB_KEY];
-  const prefixLength = prefix.length;
-  let i = 1;
-  let list: Deno.KvListIterator<Uint8Array> | null = null;
-  return new ReadableStream({
-    type: "bytes",
-    autoAllocateChunkSize: CHUNK_SIZE,
-    async pull(controller) {
-      if (!list) {
-        return controller.error(new Error("Internal error - list not set"));
-      }
-      const next = await list.next();
-      if (
-        next.value && next.value.value &&
-        next.value.key.length === prefixLength + 1 &&
-        next.value.key[prefixLength] === i
-      ) {
-        i++;
-        if (next.value.value instanceof Uint8Array) {
-          controller.enqueue(next.value.value);
-        } else {
-          controller.error(new TypeError("KV value is not a Uint8Array."));
-        }
-      } else {
-        controller.close();
-      }
-      if (next.done) {
-        controller.close();
-      }
-    },
-    start() {
-      list = kv.list<Uint8Array>({ prefix }, {
-        ...options,
-        batchSize: BATCH_SIZE,
-      });
-    },
-  });
-}
-
-async function asUint8Array(
-  kv: Deno.Kv,
-  key: Deno.KvKey,
-  options: { consistency?: Deno.KvConsistencyLevel | undefined },
-): Promise<Uint8Array | null> {
-  const prefix = [...key, BLOB_KEY];
-  const prefixLength = prefix.length;
-  const list = kv.list<Uint8Array>({ prefix }, {
-    ...options,
-    batchSize: BATCH_SIZE,
-  });
-  let found = false;
-  let value = new Uint8Array();
-  let i = 1;
-  for await (const item of list) {
-    if (
-      item.value && item.key.length === prefixLength + 1 &&
-      item.key[prefixLength] === i
-    ) {
-      i++;
-      found = true;
-      if (!(item.value instanceof Uint8Array)) {
-        throw new TypeError("KV value is not a Uint8Array.");
-      }
-      const v = new Uint8Array(value.length + item.value.length);
-      v.set(value, 0);
-      v.set(item.value, value.length);
-      value = v;
-    } else {
-      break;
-    }
-  }
-  return found ? value : null;
-}
-
 function toParts(blob: ArrayBufferLike): string[] {
   const buffer = new Uint8Array(blob);
   const parts: string[] = [];
@@ -321,17 +237,8 @@ function toParts(blob: ArrayBufferLike): string[] {
  * await kv.close();
  * ```
  */
-export async function remove(kv: Deno.Kv, key: Deno.KvKey): Promise<void> {
-  const parts = await keys(kv, { prefix: [...key, BLOB_KEY] }, {
-    batchSize: BATCH_SIZE,
-  });
-  if (parts.length) {
-    let op = batchedAtomic(kv).delete([...key, BLOB_META_KEY]);
-    for (const key of parts) {
-      op = op.delete(key);
-    }
-    await op.commit();
-  }
+export function remove(kv: Deno.Kv, key: Deno.KvKey): Promise<void> {
+  return removeBlob(kv, key);
 }
 
 /** Retrieve a binary object entry from the store with a given key that has been
@@ -702,7 +609,12 @@ export function getAsStream(
 export async function set(
   kv: Deno.Kv,
   key: Deno.KvKey,
-  blob: ArrayBufferLike | ReadableStream<Uint8Array> | Blob | File,
+  blob:
+    | ArrayBufferLike
+    | ArrayBufferView
+    | ReadableStream<Uint8Array>
+    | Blob
+    | File,
   options?: { expireIn?: number },
 ): Promise<Deno.KvCommitResult> {
   const items = await keys(kv, { prefix: [...key, BLOB_KEY] });

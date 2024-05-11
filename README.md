@@ -128,6 +128,39 @@ Convert a JSON representation of a blob back into a value. Depending on what
 kind of value the JSON represents, either a `Uint8Array`, `Blob` or `File` is
 returned.
 
+## Crypto
+
+APIs which allow you to encrypt and decrypt values within a Deno KV datastore.
+
+### `generateKey()`
+
+Generate a random crypto key which can be used with `CryptoKv`. The value
+returned will be a hex encoded string. It defaults to 256 bits long. A value of
+128, 192, 256 bits can be supplied as an argument to the function to change the
+key length.
+
+### `openCryptoKv()`
+
+Like `Deno.openKv()` but returns an instance of `CryptoKv`. `encryptWith`
+argument needs to be supplied, which is either a hex encoded string or
+`Uint8Array` that is 128, 192, 256 bits in length or an object which conforms to
+the `Encryptor` interface. That options `path` works just like `path` for
+`Deno.openKv()`.
+
+### `CryptoKv`
+
+A class which currently provides the ability to set, get and delete encrypted
+blob values. If created directly, an instance of `Deno.Kv` needs to be passed to
+the constructor along with a value for `encryptWith`.
+
+When a key is supplied,
+
+### `Encryptor`
+
+An interface which specifies two methods of `encrypt()` and `decrypt()` which
+will be used for encrypting and decrypting values. This can be used to provide
+alternative
+
 ## JSON
 
 APIs allowing the serialization and deserialization of Deno KV entries, keys,

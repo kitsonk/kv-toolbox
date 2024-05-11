@@ -4,6 +4,7 @@
   "exports": {
     "./batched_atomic": "./batched_atomic.ts",
     "./blob": "./blob.ts",
+    "./crypto": "./crypto.ts",
     "./json": "./json.ts",
     "./keys": "./keys.ts",
     "./ndjson": "./ndjson.ts"
@@ -18,6 +19,7 @@
     ]
   },
   "tasks": {
+    "bench": "deno bench --allow-read --allow-write --unstable-kv",
     "coverage": "deno coverage --lcov --output=cov.lcov ./cov",
     "test": "deno test --allow-read --allow-write --unstable-kv --parallel",
     "test:ci": "deno test --allow-read --allow-write --unstable-kv --coverage=./cov --parallel"
