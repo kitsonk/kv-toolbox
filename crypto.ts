@@ -31,9 +31,9 @@
  * @module
  */
 
-import { assert } from "jsr:@std/assert@0.220/assert";
-import { decodeHex, encodeHex } from "jsr:@std/encoding@0.220/hex";
-import { concat } from "jsr:@std/bytes@0.220/concat";
+import { assert } from "jsr:@std/assert@0.225/assert";
+import { decodeHex, encodeHex } from "jsr:@std/encoding@0.224/hex";
+import { concat } from "jsr:@std/bytes@0.224/concat";
 
 import { batchedAtomic } from "./batched_atomic.ts";
 import { BLOB_KEY, type BlobMeta } from "./blob.ts";

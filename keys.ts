@@ -144,7 +144,7 @@
  * @module
  */
 
-import { timingSafeEqual } from "jsr:@std/crypto@0.220/timing_safe_equal";
+import { timingSafeEqual } from "jsr:@std/crypto@0.224/timing-safe-equal";
 
 import { BLOB_KEY, BLOB_META_KEY } from "./blob_util.ts";
 

@@ -31,7 +31,7 @@
  * @module
  */
 
-import { concat } from "jsr:@std/bytes@0.220/concat";
+import { concat } from "jsr:@std/bytes@0.224/concat";
 
 import { entryToJSON, type KvEntryJSON, toKey, toValue } from "./json.ts";
 
