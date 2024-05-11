@@ -1,5 +1,13 @@
 # kv-toolbox change log
 
+## Version 0.18.0
+
+- feat: support DataView in JSON (3ce809b)
+- feat: initial implementation of crypto (77f0df0)
+- chore: add superserial to byte_size bench (2e9aa1e)
+- chore: update std version (b519f94)
+- tests: fix fragile size_of test (c33207e)
+
 ## Version 0.17.0
 
 - feat: add `toBlob()` (9b874dc)
