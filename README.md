@@ -144,7 +144,7 @@ key length.
 Like `Deno.openKv()` but returns an instance of `CryptoKv`. `encryptWith`
 argument needs to be supplied, which is either a hex encoded string or
 `Uint8Array` that is 128, 192, 256 bits in length or an object which conforms to
-the `Encryptor` interface. That options `path` works just like `path` for
+the `Encryptor` interface. The `path` option works just like `path` option for
 `Deno.openKv()`.
 
 ### `CryptoKv`
