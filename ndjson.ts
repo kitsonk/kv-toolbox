@@ -31,11 +31,11 @@
  * @module
  */
 
-import { concat } from "jsr:@std/bytes@0.224/concat";
+import { concat } from "jsr:@std/bytes@~1/concat";
 
 import { entryToJSON, type KvEntryJSON, toKey, toValue } from "./json.ts";
 
-interface ExportEntriesOptionsJSON extends Deno.KvListOptions {
+export interface ExportEntriesOptionsJSON extends Deno.KvListOptions {
   /**
    * Determines if the function should close the provided KV store once all the
    * entities are exported. By default, the store won't be closed.
@@ -49,7 +49,7 @@ interface ExportEntriesOptionsJSON extends Deno.KvListOptions {
   text: true;
 }
 
-interface ExportEntriesOptionsBytes extends Deno.KvListOptions {
+export interface ExportEntriesOptionsBytes extends Deno.KvListOptions {
   /**
    * Determines if the function should close the provided KV store once all the
    * entities are exported. By default, the store won't be closed.
@@ -139,7 +139,7 @@ export interface ImportEntriesOptions {
 /**
  * The result returned from calling {@linkcode importEntries}.
  */
-interface ImportEntriesResult {
+export interface ImportEntriesResult {
   /** If set, the import process was aborted prior to completing. */
   aborted?: true;
   /** The number of entries read from the input data. */
@@ -450,7 +450,7 @@ export async function importEntries(
   let errors = 0;
   let skipped = 0;
   while (true) {
-    let result: ReadableStreamDefaultReadResult<string> | undefined = undefined;
+    let result: ReadableStreamReadResult<string> | undefined = undefined;
     try {
       result = await reader.read();
       if (result.value) {

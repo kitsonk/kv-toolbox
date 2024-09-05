@@ -34,11 +34,11 @@ Deno.test({
   async fn() {
     const kv = await setup();
     let value = new Uint8Array(65_536);
-    window.crypto.getRandomValues(value);
+    globalThis.crypto.getRandomValues(value);
     const res = await set(kv, ["hello"], value);
     assert(res.ok);
     value = new Uint8Array(65_536);
-    window.crypto.getRandomValues(value);
+    globalThis.crypto.getRandomValues(value);
     const actual = await batchedAtomic(kv)
       .checkBlob({ key: ["hello"], versionstamp: res.versionstamp })
       .setBlob(["hello"], value)
@@ -55,11 +55,11 @@ Deno.test({
   async fn() {
     const kv = await setup();
     let value = new Uint8Array(65_536);
-    window.crypto.getRandomValues(value);
+    globalThis.crypto.getRandomValues(value);
     const res = await set(kv, ["hello"], value);
     assert(res.ok);
     value = new Uint8Array(65_536);
-    window.crypto.getRandomValues(value);
+    globalThis.crypto.getRandomValues(value);
     const actual = await batchedAtomic(kv)
       .checkBlob({ key: ["hello"], versionstamp: null })
       .setBlob(["hello"], value)
@@ -125,7 +125,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const blob = new Uint8Array(65_536);
-    window.crypto.getRandomValues(blob);
+    globalThis.crypto.getRandomValues(blob);
     const operation = batchedAtomic(kv);
     operation.setBlob(["hello"], blob);
     await operation.commit();
@@ -144,7 +144,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const blob = new Uint8Array(65_536);
-    window.crypto.getRandomValues(blob);
+    globalThis.crypto.getRandomValues(blob);
     await set(kv, ["hello"], blob);
     assertEquals((await keys(kv, { prefix: ["hello"] })).length, 3);
     const operation = batchedAtomic(kv);

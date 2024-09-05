@@ -19,7 +19,7 @@
  * const kv = await openCryptoKv(generateKey());
  * const res = await kv.setBlob(
  *   ["hello"],
- *   window.crypto.getRandomValues(new Uint8Array(65_536)),
+ *   globalThis.crypto.getRandomValues(new Uint8Array(65_536)),
  * );
  * if (res.ok) {
  *   const maybeValue = await kv.getBlob(["hello"]);
@@ -31,9 +31,9 @@
  * @module
  */
 
-import { assert } from "jsr:@std/assert@0.225/assert";
-import { decodeHex, encodeHex } from "jsr:@std/encoding@0.224/hex";
-import { concat } from "jsr:@std/bytes@0.224/concat";
+import { assert } from "jsr:@std/assert@~1/assert";
+import { decodeHex, encodeHex } from "jsr:@std/encoding@~1/hex";
+import { concat } from "jsr:@std/bytes@~1/concat";
 
 import { batchedAtomic } from "./batched_atomic.ts";
 import { BLOB_KEY, type BlobMeta } from "./blob.ts";
@@ -136,7 +136,7 @@ export class CryptoKv {
         console.log();
         const cryptoKey = this.#cryptoKey ??
           (this.#cryptoKey = await importKey(this.#key!));
-        return window.crypto.subtle.decrypt(
+        return globalThis.crypto.subtle.decrypt(
           { name: "AES-GCM", iv },
           cryptoKey,
           chunk,
@@ -214,7 +214,7 @@ export class CryptoKv {
       assert(this.#key);
       const key = this.#cryptoKey ??
         (this.#cryptoKey = await importKey(this.#key));
-      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
       if (
         ArrayBuffer.isView(blob) || blob instanceof ArrayBuffer ||
         blob instanceof SharedArrayBuffer
@@ -222,7 +222,7 @@ export class CryptoKv {
         return concat([
           iv,
           new Uint8Array(
-            await window.crypto.subtle.encrypt(
+            await globalThis.crypto.subtle.encrypt(
               { name: "AES-GCM", iv },
               key,
               blob,
@@ -236,7 +236,7 @@ export class CryptoKv {
           return new File(
             [
               iv,
-              await window.crypto.subtle.encrypt(
+              await globalThis.crypto.subtle.encrypt(
                 { name: "AES-GCM", iv },
                 key,
                 buffer,
@@ -249,7 +249,7 @@ export class CryptoKv {
         const { type } = blob;
         return new Blob([
           iv,
-          await window.crypto.subtle.encrypt(
+          await globalThis.crypto.subtle.encrypt(
             { name: "AES-GCM", iv },
             key,
             buffer,
@@ -272,7 +272,7 @@ export class CryptoKv {
       const iv = blob.slice(0, 12);
       const message = blob.slice(12);
       return new Uint8Array(
-        await window.crypto.subtle.decrypt(
+        await globalThis.crypto.subtle.decrypt(
           { name: "AES-GCM", iv },
           key,
           message,
@@ -446,7 +446,7 @@ export class CryptoKv {
    * const kv = await openCryptoKv(generateKey());
    * const res = await kv.setBlob(
    *   ["hello"],
-   *   window.crypto.getRandomValues(new Uint8Array(65_536)),
+   *   globalThis.crypto.getRandomValues(new Uint8Array(65_536)),
    * );
    * if (res.ok) {
    *   // the commit was successful
@@ -524,7 +524,7 @@ export function generateKey(bitLength: 128 | 192 | 256 = 256): string {
   if (![128, 192, 256].includes(bitLength)) {
     throw new RangeError("Bit length must be 128, 192, or 256.");
   }
-  const raw = window.crypto.getRandomValues(new Uint8Array(bitLength / 8));
+  const raw = globalThis.crypto.getRandomValues(new Uint8Array(bitLength / 8));
   return encodeHex(raw);
 }
 

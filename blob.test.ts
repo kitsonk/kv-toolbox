@@ -27,7 +27,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const blob = new Uint8Array(65_536);
-    window.crypto.getRandomValues(blob);
+    globalThis.crypto.getRandomValues(blob);
     const res = await set(kv, ["hello"], blob);
     assert(res.ok);
     assert(res.versionstamp);
@@ -46,7 +46,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const u8 = new Uint8Array(65_536);
-    window.crypto.getRandomValues(u8);
+    globalThis.crypto.getRandomValues(u8);
     const blob = new DataView(u8.buffer);
     const res = await set(kv, ["hello"], blob);
     assert(res.ok);
@@ -66,7 +66,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const data = new Uint8Array(65_536);
-    window.crypto.getRandomValues(data);
+    globalThis.crypto.getRandomValues(data);
     const blob = new Blob([data]);
     const res = await set(kv, ["hello"], blob.stream());
     assert(res.ok);
@@ -85,7 +85,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const data = new Uint8Array(65_536);
-    window.crypto.getRandomValues(data);
+    globalThis.crypto.getRandomValues(data);
     const blob = new Blob([data], { type: "application/octet-stream" });
     const res = await set(kv, ["hello"], blob);
     assert(res.ok);
@@ -110,7 +110,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const data = new Uint8Array(65_536);
-    window.crypto.getRandomValues(data);
+    globalThis.crypto.getRandomValues(data);
     const blob = new File([data], "test.bin", {
       type: "application/octet-stream",
       lastModified: 12345678,
@@ -140,7 +140,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const blob = new Uint8Array(65_536);
-    window.crypto.getRandomValues(blob);
+    globalThis.crypto.getRandomValues(blob);
     const res = await set(kv, ["hello"], blob);
     assert(res.ok);
     const actual = await keys(kv, { prefix: ["hello"] });
@@ -207,7 +207,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const blob = new Uint8Array(65_536);
-    window.crypto.getRandomValues(blob);
+    globalThis.crypto.getRandomValues(blob);
     await set(kv, ["hello"], blob);
     const actual = await get(kv, ["hello"]);
     assert(actual.value);
@@ -221,7 +221,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const blob = new Uint8Array(65_536);
-    window.crypto.getRandomValues(blob);
+    globalThis.crypto.getRandomValues(blob);
     await set(kv, ["hello"], blob);
     const entry = await get(kv, ["hello"], { stream: true });
     assert(entry.value);
@@ -239,7 +239,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const blob = new Uint8Array(65_536);
-    window.crypto.getRandomValues(blob);
+    globalThis.crypto.getRandomValues(blob);
     await set(kv, ["hello"], blob);
     const stream = getAsStream(kv, ["hello"]);
     let count = 0;
@@ -353,7 +353,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const u8 = new Uint8Array(65_536);
-    window.crypto.getRandomValues(u8);
+    globalThis.crypto.getRandomValues(u8);
     await set(kv, ["hello"], u8);
     const json = await getAsJSON(kv, ["hello"]);
     assert(json);
@@ -368,7 +368,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const u8 = new Uint8Array(65_536);
-    window.crypto.getRandomValues(u8);
+    globalThis.crypto.getRandomValues(u8);
     await set(
       kv,
       ["hello"],
@@ -391,7 +391,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const u8 = new Uint8Array(65_536);
-    window.crypto.getRandomValues(u8);
+    globalThis.crypto.getRandomValues(u8);
     await set(
       kv,
       ["hello"],
@@ -419,7 +419,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const u8 = new Uint8Array(65_536);
-    window.crypto.getRandomValues(u8);
+    globalThis.crypto.getRandomValues(u8);
     await set(kv, ["hello"], u8);
     const meta = await getMeta(kv, ["hello"]);
     assert(meta);
@@ -432,7 +432,7 @@ Deno.test({
   name: "toJSON/toValue - File",
   async fn() {
     const u8 = new Uint8Array(65_536);
-    window.crypto.getRandomValues(u8);
+    globalThis.crypto.getRandomValues(u8);
     const json = await toJSON(
       new File([u8], "test.bin", {
         type: "application/octet-stream",
@@ -459,7 +459,7 @@ Deno.test({
   name: "toJSON/toValue - Blob",
   async fn() {
     const u8 = new Uint8Array(65_536);
-    window.crypto.getRandomValues(u8);
+    globalThis.crypto.getRandomValues(u8);
     const json = await toJSON(
       new Blob([u8], { type: "application/octet-stream" }),
     );
@@ -477,7 +477,7 @@ Deno.test({
   name: "toJSON/toValue - buffer",
   async fn() {
     const u8 = new Uint8Array(65_536);
-    window.crypto.getRandomValues(u8);
+    globalThis.crypto.getRandomValues(u8);
     const json = await toJSON(u8);
     assertEquals(json.meta, { kind: "buffer" });
     assertEquals(json.parts.length, 2);
@@ -541,7 +541,7 @@ Deno.test({
   async fn() {
     const kv = await setup();
     const data = new Uint8Array(65_536);
-    window.crypto.getRandomValues(data);
+    globalThis.crypto.getRandomValues(data);
     await set(kv, ["hello"], new Blob([data]));
     assertEquals((await keys(kv, { prefix: ["hello"] })).length, 3);
     await remove(kv, ["hello"]);

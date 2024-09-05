@@ -65,12 +65,12 @@
  * @module
  */
 
-import { concat } from "jsr:@std/bytes@0.224/concat";
+import { concat } from "jsr:@std/bytes@~1/concat";
 import {
   decodeBase64Url,
   encodeBase64Url,
-} from "jsr:@std/encoding@0.224/base64url";
-import { extension } from "jsr:@std/media-types@0.224/extension";
+} from "jsr:@std/encoding@~1/base64url";
+import { extension } from "jsr:@std/media-types@~1/extension";
 
 import { batchedAtomic } from "./batched_atomic.ts";
 import {
@@ -436,12 +436,12 @@ export function getAsJSON(
  * await kv.close();
  * ```
  */
-export async function getMeta(
+export function getMeta(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
 ): Promise<Deno.KvEntryMaybe<BlobMeta>> {
-  return await asMeta(kv, key, options);
+  return asMeta(kv, key, options);
 }
 
 /** Options which can be used when calling {@linkcode getAsResponse}. */
