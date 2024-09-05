@@ -4,7 +4,7 @@ import { setup } from "./_test_util.ts";
 
 const kv = await setup();
 
-const fixture = window.crypto.getRandomValues(new Uint8Array(65_536));
+const fixture = globalThis.crypto.getRandomValues(new Uint8Array(65_536));
 const encryptionKey128 = generateKey(128);
 const cryptoKv128 = new CryptoKv(kv, encryptionKey128);
 const encryptionKey192 = generateKey(192);
