@@ -1,4 +1,6 @@
 /**
+ * # KV Toolbox
+ *
  * Provides a toolbox for interacting with a Deno KV store, including the
  * ability to store values in an encrypted fashion. The main module exports a
  * {@linkcode ToolboxKv} class that augments the Deno KV store with additional
@@ -49,19 +51,19 @@
  * capabilities of the toolbox are provided by additional exports of the
  * library:
  *
- * - [batched_atomic](./doc/batched_atomic/~) - Provides a way to perform
+ * - [batched_atomic](../doc/batched_atomic/~) - Provides a way to perform
  *   atomic operations in batches while working around the limitations of
  *   Deno KV.
- * - [blob](./doc/blob/~) - Provides a way to store arbitrarily large binary
+ * - [blob](../doc/blob/~) - Provides a way to store arbitrarily large binary
  *   data in Deno KV.
- * - [crypto](./doc/crypto/~) - Provides a way to encrypt and decrypt data in
+ * - [crypto](../doc/crypto/~) - Provides a way to encrypt and decrypt data in
  *   Deno KV.
- * - [json](./doc/json/~) - Provides utilities for handling Deno KV entries,
+ * - [json](../doc/json/~) - Provides utilities for handling Deno KV entries,
  *   keys, and values as structures which can be serialized and deserialized to
  *   JSON.
- * - [keys](./doc/keys/~) - Provides convenience functions for working with
+ * - [keys](../doc/keys/~) - Provides convenience functions for working with
  *   keys in Deno KV.
- * - [ndjson](./doc/ndjson/~) - Utilities for handling NDJSON which is a method
+ * - [ndjson](../doc/ndjson/~) - Utilities for handling NDJSON which is a method
  *   for encoding JSON in a way that supports streaming, where each JSON entity
  *   is separated with a newline.
  *
