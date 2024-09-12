@@ -2,6 +2,43 @@
 
 A set of tools for working with Deno KV.
 
+## Toolbox
+
+The default export of the library is the encapsulation of major functionality of
+the library into classes which enhance the capabilities of working with a Deno
+KV store, which are also available as individual named exports of the the
+library.
+
+There are to variants of the toolbox: `KvToolbox` and `CryptoKvToolbox`. These
+provide all the APIs of a `Deno.Kv` and the additional APIs offered by the rest
+of the library. The `CryptoKvToolbox` also attempts to encrypt and decrypt blob
+values.
+
+Opening a toolbox is similar to opening a `Deno.Kv` store:
+
+```ts
+import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+
+const kv = await openKvToolbox();
+```
+
+If an encryption key is passed as an option, a `CryptoKvToolbox` instance will
+be returned, where when storing and retrieving blobs in the store, they will be
+encrypted and decrypted by default:
+
+```ts
+import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+
+const encryptWith = generateKey();
+const kv = await openKvToolbox({ encryptWith });
+```
+
+> [!NOTE]
+> In practice, encryption keys would need to be persisted from session to
+> session. The code above would generate a new key every execution and any
+> values stored could not be decrypted. To be practical, generated encryption
+> keys need to be stored securely as a secret.
+
 ## Batched Atomic
 
 A set of APIs for dealing with the limitation of atomic commit sizes in Deno KV.
