@@ -385,6 +385,7 @@ export class CryptoKv {
     key: Deno.KvKey,
     options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
   ): Promise<Blob | File | null> {
+    // TODO: provide the ability to return a Response using the Blob
     const meta = await asMeta(this.#kv, key, options);
     if (!meta.value?.encrypted) {
       return null;

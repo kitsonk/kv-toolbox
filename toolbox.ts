@@ -75,7 +75,14 @@ import {
   batchedAtomic,
   type BatchedAtomicOperation,
 } from "./batched_atomic.ts";
-import { type BlobMeta, get, getAsBlob, getMeta, set } from "./blob.ts";
+import {
+  type BlobMeta,
+  get,
+  getAsBlob,
+  getAsResponse,
+  getMeta,
+  set,
+} from "./blob.ts";
 import { removeBlob } from "./blob_util.ts";
 import { CryptoKv, type Encryptor } from "./crypto.ts";
 import {
@@ -352,8 +359,73 @@ export class KvToolbox implements Disposable {
   }
 
   /**
-   * Retrieve a binary object from the store as a {@linkcode Blob} or
-   * {@linkcode File} that has been previously {@linkcode set}.
+   * Retrieve a binary object from the store as a {@linkcode Response} that has
+   * been previously {@linkcode set}. This will read the blob out of the KV
+   * store as a stream and set information in the response based on what is
+   * available from the source.
+   *
+   * If there are other headers required, they can be supplied in the options.
+   *
+   * Setting the `contentDisposition` to `true` will cause the function to
+   * resolve with a {@linkcode Response} which has the `Content-Disposition` set
+   * as an attachment with an appropriate file name. This is designed to send a
+   * response that instructs the browser to attempt to download the requested
+   * entry.
+   *
+   * If the blob entry is not present, the response will be set to a
+   * `404 Not Found` with a `null` body. The not found body and headers can be
+   * set in the options.
+   *
+   * @example Serving static content from Deno KV
+   *
+   * Creates a simple web server where the content has already been set in the
+   * Deno KV datastore as `Blob`s. This is a silly example just to show
+   * functionality and would be terribly inefficient in production:
+   *
+   * ```ts
+   * import { openKvToolbox } from "jsr:/@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   *
+   * const server = Deno.serve((req) => {
+   *   const key = new URL(req.url)
+   *     .pathname
+   *     .slice(1)
+   *     .split("/");
+   *   key[key.length - 1] = key[key.length - 1] || "index.html";
+   *   return kv.getAsBlob(key, { response: true });
+   * });
+   *
+   * server.finished.then(() => kv.close());
+   * ```
+   */
+  getAsBlob(
+    key: Deno.KvKey,
+    options: {
+      consistency?: Deno.KvConsistencyLevel | undefined;
+      response: true;
+      /**
+       * Set an appropriate content disposition header on the response. This will
+       * cause a browser to usually treat the response as a download.
+       *
+       * If a filename is available, it will be used, otherwise a filename and
+       * extension derived from the key and content type.
+       */
+      contentDisposition?: boolean | undefined;
+      /** Any headers init to be used in conjunction with creating the request. */
+      headers?: HeadersInit | undefined;
+      /** If the blob entry is not present, utilize this body when responding. This
+       * defaults to `null`. */
+      notFoundBody?: BodyInit | undefined;
+      /** If the blob entry is not present, utilize this headers init when
+       * responding. */
+      notFoundHeaders?: HeadersInit | undefined;
+    },
+  ): Promise<Response>;
+  /**
+   * Retrieve a binary object from the store as a {@linkcode Blob},
+   * {@linkcode File} or {@linkcode Response} that has been previously
+   * {@linkcode set}.
    *
    * If the object set was originally a {@linkcode Blob} or {@linkcode File} the
    * function will resolve with an instance of {@linkcode Blob} or
@@ -377,9 +449,25 @@ export class KvToolbox implements Disposable {
    */
   getAsBlob(
     key: Deno.KvKey,
-    options?: { consistency?: Deno.KvConsistencyLevel | undefined },
-  ): Promise<Blob | File | null> {
-    return getAsBlob(this.#kv, key, options);
+    options: {
+      consistency?: Deno.KvConsistencyLevel | undefined;
+      response?: boolean | undefined;
+    },
+  ): Promise<Blob | File | null>;
+  getAsBlob(
+    key: Deno.KvKey,
+    options?: {
+      consistency?: Deno.KvConsistencyLevel | undefined;
+      response?: boolean | undefined;
+      contentDisposition?: boolean | undefined;
+      headers?: HeadersInit | undefined;
+      notFoundBody?: BodyInit | undefined;
+      notFoundHeaders?: HeadersInit | undefined;
+    },
+  ): Promise<Blob | File | Response | null> {
+    return options?.response
+      ? getAsResponse(this.#kv, key, options)
+      : getAsBlob(this.#kv, key, options);
   }
 
   /**
@@ -1000,6 +1088,63 @@ export class CryptoKvToolbox extends KvToolbox {
   }
 
   /**
+   * Retrieve a binary object from the store as a {@linkcode Response} that has
+   * been previously {@linkcode set}. This will read the blob out of the KV
+   * store as a stream and set information in the response based on what is
+   * available from the source.
+   *
+   * > [!WARNING]
+   * > Encrypted blobs cannot be retrieved as responses. The `encrypted` option
+   * > must be set to `false` to retrieve a blob as a response.
+   *
+   * If there are other headers required, they can be supplied in the options.
+   *
+   * Setting the `contentDisposition` to `true` will cause the function to
+   * resolve with a {@linkcode Response} which has the `Content-Disposition` set
+   * as an attachment with an appropriate file name. This is designed to send a
+   * response that instructs the browser to attempt to download the requested
+   * entry.
+   *
+   * If the blob entry is not present, the response will be set to a
+   * `404 Not Found` with a `null` body. The not found body and headers can be
+   * set in the options.
+   *
+   * @example Serving static content from Deno KV
+   *
+   * Creates a simple web server where the content has already been set in the
+   * Deno KV datastore as `Blob`s. This is a silly example just to show
+   * functionality and would be terribly inefficient in production:
+   *
+   * ```ts
+   * import { generateKey, openKvToolbox } from "jsr:/@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox({ encryptWith: generateKey() });
+   *
+   * const server = Deno.serve((req) => {
+   *   const key = new URL(req.url)
+   *     .pathname
+   *     .slice(1)
+   *     .split("/");
+   *   key[key.length - 1] = key[key.length - 1] || "index.html";
+   *   return kv.getAsBlob(key, { response: true, encrypted: false });
+   * });
+   *
+   * server.finished.then(() => kv.close());
+   * ```
+   */
+  getAsBlob(
+    key: Deno.KvKey,
+    options: {
+      consistency?: Deno.KvConsistencyLevel;
+      encrypted: false;
+      response: true;
+      contentDisposition?: boolean | undefined;
+      headers?: HeadersInit | undefined;
+      notFoundBody?: BodyInit | undefined;
+      notFoundHeaders?: HeadersInit | undefined;
+    },
+  ): Promise<Response>;
+  /**
    * Retrieve a binary object from the store as a {@linkcode Blob} or
    * {@linkcode File} that has been previously {@linkcode set}.
    *
@@ -1030,11 +1175,26 @@ export class CryptoKvToolbox extends KvToolbox {
    */
   getAsBlob(
     key: Deno.KvKey,
+    options?: {
+      consistency?: Deno.KvConsistencyLevel | undefined;
+      encrypted?: boolean | undefined;
+    },
+  ): Promise<Blob | File | null>;
+  getAsBlob(
+    key: Deno.KvKey,
     options: {
-      consistency?: Deno.KvConsistencyLevel;
-      encrypted?: boolean;
+      consistency?: Deno.KvConsistencyLevel | undefined;
+      encrypted?: boolean | undefined;
+      response?: boolean | undefined;
+      contentDisposition?: boolean | undefined;
+      headers?: HeadersInit | undefined;
+      notFoundBody?: BodyInit | undefined;
+      notFoundHeaders?: HeadersInit | undefined;
     } = {},
-  ): Promise<Blob | File | null> {
+  ): Promise<Blob | File | Response | null> {
+    if (options.response && options.encrypted !== false) {
+      throw new TypeError("Encrypted blobs cannot be retrieved as responses.");
+    }
     return options.encrypted === false
       ? super.getAsBlob(key, options)
       : this.#cryptoKv.getAsBlob(key, options);
