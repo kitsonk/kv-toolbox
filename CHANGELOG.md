@@ -1,5 +1,18 @@
 # kv-toolbox change log
 
+## Version 0.19.0
+
+- feat: add toolbox APIs (1e0842f)
+- feat: add default export (0600060)
+- feat: add ability to retrieve response with toolbox (b0281f6)
+- feat: add blob as JSON to toolbox (6bf5d7d)
+- fix: default export (335bcd7)
+- fix: add filename to export response on toolbox (af2441a)
+- chore: update deps and Deno v2 (64bfe85)
+- chore: update crypto bench (2485218)
+- docs: update verbiage in README (#14)
+- docs: fix inline doc refs (72c580b)
+
 ## Version 0.18.0
 
 - feat: support DataView in JSON (3ce809b)
