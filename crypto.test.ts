@@ -119,6 +119,24 @@ Deno.test({
 });
 
 Deno.test({
+  name: "getAsJSON",
+  async fn() {
+    const kv = await setup();
+    const key = generateKey();
+    const cryptoKv = new CryptoKv(kv, key);
+    const part = globalThis.crypto.getRandomValues(new Uint8Array(65_536));
+    const value = new File([part], "test.bin", { type: "text/plain" });
+    const res = await cryptoKv.setBlob(["example"], value);
+    assert(res.ok);
+    const actual = await cryptoKv.getAsJSON(["example"]);
+    assert(actual);
+    assertEquals(actual.meta.kind, "file");
+    assertEquals(actual.parts.length, 2);
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "getBlobMeta",
   async fn() {
     const kv = await setup();

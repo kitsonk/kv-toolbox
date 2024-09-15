@@ -76,9 +76,11 @@ import {
   type BatchedAtomicOperation,
 } from "./batched_atomic.ts";
 import {
+  type BlobJSON,
   type BlobMeta,
   get,
   getAsBlob,
+  getAsJSON,
   getAsResponse,
   getMeta,
   set,
@@ -104,11 +106,6 @@ import {
 } from "./ndjson.ts";
 
 export { generateKey } from "./crypto.ts";
-
-interface ExportEntriesOptionsResponse {
-  close?: boolean;
-  response: true;
-}
 
 /**
  * A toolbox for interacting with a Deno KV store.
@@ -293,7 +290,7 @@ export class KvToolbox implements Disposable {
    */
   export(
     selector: Deno.KvListSelector,
-    options: ExportEntriesOptionsResponse,
+    options: { close?: boolean; response: true },
   ): Response;
   /**
    * Like {@linkcode Deno.Kv} `.list()` method, but returns a
@@ -319,11 +316,14 @@ export class KvToolbox implements Disposable {
   export(
     selector: Deno.KvListSelector,
     options:
-      | ExportEntriesOptionsResponse
-      | ExportEntriesOptionsJSON
-      | ExportEntriesOptionsBytes = {},
+      | { close?: boolean; response: true }
+      | (
+        | ExportEntriesOptionsJSON
+        | ExportEntriesOptionsBytes
+      )
+        & { response?: boolean | undefined } = {},
   ): Response | ReadableStream<string | Uint8Array> {
-    return (options as ExportEntriesOptionsResponse).response
+    return options.response
       ? exportToResponse(this.#kv, selector, options)
       : exportEntries(this.#kv, selector, options);
   }
@@ -423,9 +423,33 @@ export class KvToolbox implements Disposable {
     },
   ): Promise<Response>;
   /**
+   * Retrieve a binary object from the store as {@linkcode BlobJSON} that has
+   * been previously {@linkcode set}.
+   *
+   * If there is no corresponding entry, the function will resolve to `null`.
+   *
+   * @example Getting a value
+   *
+   * ```ts
+   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   * const json = await kv.getAsBlob(["hello"], { json: true });
+   * // do something with blob json
+   * await kv.close();
+   * ```
+   */
+  getAsBlob(
+    key: Deno.KvKey,
+    options: {
+      consistency?: Deno.KvConsistencyLevel | undefined;
+      json: true;
+    },
+  ): Promise<BlobJSON | null>;
+  /**
    * Retrieve a binary object from the store as a {@linkcode Blob},
-   * {@linkcode File} or {@linkcode Response} that has been previously
-   * {@linkcode set}.
+   * {@linkcode File}, {@linkcode BlobJSON} or {@linkcode Response} that has
+   * been previously {@linkcode set}.
    *
    * If the object set was originally a {@linkcode Blob} or {@linkcode File} the
    * function will resolve with an instance of {@linkcode Blob} or
@@ -449,9 +473,10 @@ export class KvToolbox implements Disposable {
    */
   getAsBlob(
     key: Deno.KvKey,
-    options: {
+    options?: {
       consistency?: Deno.KvConsistencyLevel | undefined;
       response?: boolean | undefined;
+      json?: boolean | undefined;
     },
   ): Promise<Blob | File | null>;
   getAsBlob(
@@ -463,10 +488,13 @@ export class KvToolbox implements Disposable {
       headers?: HeadersInit | undefined;
       notFoundBody?: BodyInit | undefined;
       notFoundHeaders?: HeadersInit | undefined;
+      json?: boolean | undefined;
     },
-  ): Promise<Blob | File | Response | null> {
+  ): Promise<Blob | File | BlobJSON | Response | null> {
     return options?.response
-      ? getAsResponse(this.#kv, key, options)
+      ? options?.json
+        ? getAsJSON(this.#kv, key, options)
+        : getAsResponse(this.#kv, key, options)
       : getAsBlob(this.#kv, key, options);
   }
 
@@ -1145,6 +1173,35 @@ export class CryptoKvToolbox extends KvToolbox {
     },
   ): Promise<Response>;
   /**
+   * Retrieve a binary object from the store as a {@linkcode BlobJSON}.
+   *
+   * By default, the `encrypted` option is true and the `encryptWith` will be
+   * used to decrypt the value. If the value is not encrypted, then the method
+   * will return `null`. Explicitly setting the `encrypted` option to `false`
+   * will bypass the decryption.
+   *
+   * @example Retrieving an encrypted blob as JSON
+   *
+   * ```ts
+   * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox({ encryptWith: generateKey() });
+   * const value = await kv.getAsBlob(["hello"], { json: true });
+   * if (value) {
+   *   // do something with value
+   * }
+   * kv.close();
+   * ```
+   */
+  getAsBlob(
+    key: Deno.KvKey,
+    options: {
+      consistency?: Deno.KvConsistencyLevel;
+      encrypted?: boolean | undefined;
+      json: true;
+    },
+  ): Promise<BlobJSON | null>;
+  /**
    * Retrieve a binary object from the store as a {@linkcode Blob} or
    * {@linkcode File} that has been previously {@linkcode set}.
    *
@@ -1178,6 +1235,7 @@ export class CryptoKvToolbox extends KvToolbox {
     options?: {
       consistency?: Deno.KvConsistencyLevel | undefined;
       encrypted?: boolean | undefined;
+      json?: boolean | undefined;
     },
   ): Promise<Blob | File | null>;
   getAsBlob(
@@ -1190,13 +1248,16 @@ export class CryptoKvToolbox extends KvToolbox {
       headers?: HeadersInit | undefined;
       notFoundBody?: BodyInit | undefined;
       notFoundHeaders?: HeadersInit | undefined;
+      json?: boolean | undefined;
     } = {},
-  ): Promise<Blob | File | Response | null> {
+  ): Promise<Blob | File | BlobJSON | Response | null> {
     if (options.response && options.encrypted !== false) {
       throw new TypeError("Encrypted blobs cannot be retrieved as responses.");
     }
     return options.encrypted === false
       ? super.getAsBlob(key, options)
+      : options.json
+      ? this.#cryptoKv.getAsJSON(key, options)
       : this.#cryptoKv.getAsBlob(key, options);
   }
 

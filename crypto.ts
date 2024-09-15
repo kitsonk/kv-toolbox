@@ -36,7 +36,7 @@ import { decodeHex, encodeHex } from "jsr:@std/encoding@~1/hex";
 import { concat } from "jsr:@std/bytes@~1/concat";
 
 import { batchedAtomic } from "./batched_atomic.ts";
-import { BLOB_KEY, type BlobMeta } from "./blob.ts";
+import { BLOB_KEY, type BlobJSON, type BlobMeta, toJSON } from "./blob.ts";
 import {
   asMeta,
   asUint8Array,
@@ -391,6 +391,36 @@ export class CryptoKv {
       return null;
     }
     return this.#asBlob(key, options, meta.value);
+  }
+
+  /**
+   * Resolve with just the value of an encrypted blob as a {@linkcode BlobJSON}.
+   * If there isn't an encrypted blob value associated with the key, `null` will
+   * be resolved.
+   *
+   * @example Retrieve a JSON object from the store
+   *
+   * ```ts
+   * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+   *
+   * const kv = await openCryptoKv(generateKey());
+   * const value = await kv.getAsJson(["hello"]);
+   * if (value) {
+   *  // do something with value
+   * }
+   * kv.close();
+   * ```
+   */
+  async getAsJSON(
+    key: Deno.KvKey,
+    options: { consistency?: Deno.KvConsistencyLevel | undefined } = {},
+  ): Promise<BlobJSON | null> {
+    const meta = await asMeta(this.#kv, key, options);
+    if (!meta.value?.encrypted) {
+      return null;
+    }
+    const blob = await this.#asBlob(key, options, meta.value);
+    return blob ? toJSON(blob) : null;
   }
 
   /**
