@@ -290,7 +290,16 @@ export class KvToolbox implements Disposable {
    */
   export(
     selector: Deno.KvListSelector,
-    options: { close?: boolean; response: true },
+    options: {
+      close?: boolean;
+      response: true;
+      /**
+       * If provided, the response will include a header that indicates the file is
+       * meant to be downloaded (`Content-Disposition`). The extension `.ndjson`
+       * will be appended to the filename.
+       */
+      filename?: string;
+    },
   ): Response;
   /**
    * Like {@linkcode Deno.Kv} `.list()` method, but returns a
@@ -316,7 +325,7 @@ export class KvToolbox implements Disposable {
   export(
     selector: Deno.KvListSelector,
     options:
-      | { close?: boolean; response: true }
+      | { close?: boolean; response: true; filename?: string }
       | (
         | ExportEntriesOptionsJSON
         | ExportEntriesOptionsBytes
