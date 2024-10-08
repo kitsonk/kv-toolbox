@@ -1016,7 +1016,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * await kv.close();
    * ```
    */
-  getBlob(
+  override getBlob(
     key: Deno.KvKey,
     options: {
       consistency?: Deno.KvConsistencyLevel | undefined;
@@ -1056,7 +1056,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * await kv.close();
    * ```
    */
-  getBlob(
+  override getBlob(
     key: Deno.KvKey,
     options: {
       consistency?: Deno.KvConsistencyLevel | undefined;
@@ -1096,7 +1096,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * await kv.close();
    * ```
    */
-  getBlob(
+  override getBlob(
     key: Deno.KvKey,
     options?: {
       consistency?: Deno.KvConsistencyLevel | undefined;
@@ -1105,7 +1105,7 @@ export class CryptoKvToolbox extends KvToolbox {
       stream?: boolean | undefined;
     } | undefined,
   ): Promise<Deno.KvEntryMaybe<Uint8Array>>;
-  getBlob(
+  override getBlob(
     key: Deno.KvKey,
     options: {
       consistency?: Deno.KvConsistencyLevel | undefined;
@@ -1169,7 +1169,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * server.finished.then(() => kv.close());
    * ```
    */
-  getAsBlob(
+  override getAsBlob(
     key: Deno.KvKey,
     options: {
       consistency?: Deno.KvConsistencyLevel;
@@ -1202,7 +1202,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * kv.close();
    * ```
    */
-  getAsBlob(
+  override getAsBlob(
     key: Deno.KvKey,
     options: {
       consistency?: Deno.KvConsistencyLevel;
@@ -1239,7 +1239,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * kv.close();
    * ```
    */
-  getAsBlob(
+  override getAsBlob(
     key: Deno.KvKey,
     options?: {
       consistency?: Deno.KvConsistencyLevel | undefined;
@@ -1247,7 +1247,7 @@ export class CryptoKvToolbox extends KvToolbox {
       json?: boolean | undefined;
     },
   ): Promise<Blob | File | null>;
-  getAsBlob(
+  override getAsBlob(
     key: Deno.KvKey,
     options: {
       consistency?: Deno.KvConsistencyLevel | undefined;
@@ -1293,7 +1293,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * kv.close();
    * ```
    */
-  getMeta(
+  override getMeta(
     key: Deno.KvKey,
     options: {
       consistency?: Deno.KvConsistencyLevel | undefined;
@@ -1341,7 +1341,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * kv.close();
    * ```
    */
-  setBlob(
+  override setBlob(
     key: Deno.KvKey,
     blob:
       | ReadableStream<Uint8Array>
@@ -1361,7 +1361,7 @@ export class CryptoKvToolbox extends KvToolbox {
       : this.#cryptoKv.setBlob(key, blob as ArrayBufferLike, options);
   }
 
-  [Symbol.dispose]() {
+  override [Symbol.dispose]() {
     // deno-lint-ignore no-explicit-any
     (this.#cryptoKv as any) = undefined;
     super[Symbol.dispose]();
