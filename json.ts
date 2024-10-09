@@ -77,7 +77,7 @@ export interface KvBooleanJSON {
  */
 export interface KvNumberJSON {
   type: "number";
-  value: number;
+  value: number | "Infinity" | "-Infinity" | "NaN";
 }
 
 /**
@@ -455,6 +455,13 @@ export function keyPartToJSON(value: Deno.KvKeyPart): KvKeyPartJSON {
     case "boolean":
       return { type: "boolean", value };
     case "number":
+      if (Number.isNaN(value)) {
+        return { type: "number", value: "NaN" };
+      } else if (value === Infinity) {
+        return { type: "number", value: "Infinity" };
+      } else if (value === -Infinity) {
+        return { type: "number", value: "-Infinity" };
+      }
       return { type: "number", value };
     case "object":
       if (value instanceof Uint8Array) {
@@ -674,8 +681,18 @@ export function toKeyPart(json: KvKeyPartJSON): Deno.KvKeyPart {
     case "bigint":
       return BigInt(json.value);
     case "boolean":
-    case "number":
     case "string":
+      return json.value;
+    case "number":
+      if (json.value === "Infinity") {
+        return Infinity;
+      }
+      if (json.value === "-Infinity") {
+        return -Infinity;
+      }
+      if (json.value === "NaN") {
+        return NaN;
+      }
       return json.value;
     default:
       // deno-lint-ignore no-explicit-any

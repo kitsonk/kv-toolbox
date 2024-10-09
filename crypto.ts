@@ -133,7 +133,6 @@ export class CryptoKv {
           iv = chunk.slice(0, 12);
           chunk = chunk.slice(12);
         }
-        console.log();
         const cryptoKey = this.#cryptoKey ??
           (this.#cryptoKey = await importKey(this.#key!));
         return globalThis.crypto.subtle.decrypt(

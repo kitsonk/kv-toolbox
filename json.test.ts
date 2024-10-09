@@ -776,6 +776,39 @@ Deno.test({
 });
 
 Deno.test({
+  name: "keyPartToJSON - number - Infinity",
+  fn() {
+    const actual = JSON.parse(JSON.stringify(keyPartToJSON(Infinity)));
+    assertEquals(actual, {
+      type: "number",
+      value: "Infinity",
+    });
+  },
+});
+
+Deno.test({
+  name: "keyPartToJSON - number - -Infinity",
+  fn() {
+    const actual = JSON.parse(JSON.stringify(keyPartToJSON(-Infinity)));
+    assertEquals(actual, {
+      type: "number",
+      value: "-Infinity",
+    });
+  },
+});
+
+Deno.test({
+  name: "keyPartToJSON - number - NaN",
+  fn() {
+    const actual = JSON.parse(JSON.stringify(keyPartToJSON(NaN)));
+    assertEquals(actual, {
+      type: "number",
+      value: "NaN",
+    });
+  },
+});
+
+Deno.test({
   name: "keyPartToJSON - bigint",
   fn() {
     const actual = keyPartToJSON(100n);
@@ -830,6 +863,34 @@ Deno.test({
   fn() {
     const actual = toKeyPart({ type: "number", value: 100 });
     assertEquals(actual, 100);
+  },
+});
+
+Deno.test({
+  name: "toKeyPart - number - Infinity",
+  fn() {
+    assertStrictEquals(
+      toKeyPart({ type: "number", value: "Infinity" }),
+      Infinity,
+    );
+  },
+});
+
+Deno.test({
+  name: "toKeyPart - number - -Infinity",
+  fn() {
+    assertStrictEquals(
+      toKeyPart({ type: "number", value: "-Infinity" }),
+      -Infinity,
+    );
+  },
+});
+
+Deno.test({
+  name: "toKeyPart - number - NaN",
+  fn() {
+    const actual = toKeyPart({ type: "number", value: "NaN" });
+    assert(Number.isNaN(actual));
   },
 });
 
