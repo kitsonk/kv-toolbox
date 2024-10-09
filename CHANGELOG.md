@@ -1,5 +1,10 @@
 # kv-toolbox change log
 
+## Version 0.19.1
+
+- fix: properly handle `Infinity` and `NaN` (410d214)
+- chore: type updates for Deno 2 (b6e565b)
+
 ## Version 0.19.0
 
 - feat: add toolbox APIs (1e0842f)
