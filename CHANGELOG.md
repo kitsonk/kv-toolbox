@@ -1,5 +1,16 @@
 # kv-toolbox change log
 
+## Version 0.20.0
+
+- feat: arrays, objects, maps and sets are deeply serialized (bf8f285)
+
+  Previously only value supported by JSON directly were serialized as values and
+  keys of arrays, objects, maps and sets. While kv-toolbox can deserialize the
+  old format, it supports a new JSON format that allows all value supported by
+  Deno KV to be properly serialized and deserialized.
+
+- docs: update changelog (38bd7cd)
+
 ## Version 0.19.1
 
 - fix: properly handle `Infinity` and `NaN` (410d214)
