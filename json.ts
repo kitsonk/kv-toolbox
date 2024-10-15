@@ -147,10 +147,22 @@ export interface KvArrayBufferJSON {
 /**
  * A representation of an {@linkcode Array} Deno KV value. The value is the
  * JSON serialized version of the elements of the array.
+ *
+ * @deprecated This is a legacy representation and is only retained for
+ * compatibility with older versions of the library.
  */
-export interface KvArrayJSON<T = unknown> {
+export interface KvLegacyArrayJSON<T = unknown> {
   type: "Array";
   value: T[];
+}
+
+/**
+ * A representation of an {@linkcode Array} Deno KV value. The value is the
+ * JSON serialized version of the elements of the array.
+ */
+export interface KvArrayJSON {
+  type: "json_array";
+  value: KvValueJSON[];
 }
 
 /**
@@ -229,10 +241,23 @@ export interface KvKvU64JSON {
  * A representation of a {@linkcode Map} Deno KV value. The value is an array
  * of map entries where is map entry is a tuple of a JSON serialized key and
  * value.
+ *
+ * @deprecated This is a legacy representation and is only retained for
+ * compatibility with older versions of the library.
  */
-export interface KvMapJSON<K = unknown, V = unknown> {
+export interface KvLegacyMapJSON<K = unknown, V = unknown> {
   type: "Map";
   value: [key: K, value: V][];
+}
+
+/**
+ * A representation of a {@linkcode Map} Deno KV value. The value is an array
+ * of map entries where is map entry is a tuple of a JSON serialized key and
+ * value.
+ */
+export interface KvMapJSON {
+  type: "json_map";
+  value: [key: KvValueJSON, value: KvValueJSON][];
 }
 
 /**
@@ -246,10 +271,22 @@ export interface KvNullJSON {
 /**
  * A representation of a {@linkcode object} Deno KV value. The value is a JSON
  * serialized version of the value.
+ *
+ * @deprecated This is a legacy representation and is only retained for
+ * compatibility with older versions of the library.
  */
-export interface KvObjectJSON<T = unknown> {
+export interface KvLegacyObjectJSON<T = unknown> {
   type: "object";
   value: T;
+}
+
+/**
+ * A representation of a {@linkcode object} Deno KV value. The value is a JSON
+ * serialized version of the value.
+ */
+export interface KvObjectJSON {
+  type: "json_object";
+  value: { [key: string]: KvValueJSON };
 }
 
 /**
@@ -264,10 +301,18 @@ export interface KvRegExpJSON {
 /**
  * A representation of a {@linkcode Set} Deno KV value. The value is an array
  * of JSON serialized entries.
+ *
+ * @deprecated This is a legacy representation and is only retained for
+ * compatibility with older versions of the library.
  */
-export interface KvSetJSON<T = unknown> {
+export interface KvLegacySetJSON<T = unknown> {
   type: "Set";
   value: T[];
+}
+
+export interface KvSetJSON {
+  type: "json_set";
+  value: KvValueJSON[];
 }
 
 /** Used internally to identify a typed array. */
@@ -351,7 +396,11 @@ export type KvValueJSON =
   | KvSetJSON
   | KvStringJSON
   | KvTypedArrayJSON
-  | KvUndefinedJSON;
+  | KvUndefinedJSON
+  | KvLegacyArrayJSON
+  | KvLegacyMapJSON
+  | KvLegacyObjectJSON
+  | KvLegacySetJSON;
 
 // Deno KV Entry types
 
@@ -447,6 +496,24 @@ function typedArrayToJSON(typedArray: ArrayBufferView): KvTypedArrayJSON {
   throw TypeError("Unexpected typed array type, could not serialize.");
 }
 
+/** Internal function to encode an object. */
+function encodeObject(object: object): { [key: string]: KvValueJSON } {
+  const result: { [key: string]: KvValueJSON } = {};
+  for (const [key, value] of Object.entries(object)) {
+    result[key] = valueToJSON(value);
+  }
+  return result;
+}
+
+/** Internal function to decode an object. */
+function decodeObject(json: { [key: string]: KvValueJSON }): object {
+  const result: { [key: string]: unknown } = {};
+  for (const [key, value] of Object.entries(json)) {
+    result[key] = toValue(value);
+  }
+  return result;
+}
+
 /** Serialize a {@linkcode Deno.KvKeyPart} to JSON. */
 export function keyPartToJSON(value: Deno.KvKeyPart): KvKeyPartJSON {
   switch (typeof value) {
@@ -480,7 +547,7 @@ export function keyToJSON(value: Deno.KvKey): KvKeyJSON {
 }
 
 /** Serialize an array value to JSON. */
-export function valueToJSON<T>(value: T[]): KvArrayJSON<T>;
+export function valueToJSON(value: unknown[]): KvArrayJSON;
 /** Serialize a bigint value to JSON. */
 export function valueToJSON(value: bigint): KvBigIntJSON;
 /** Serialize a boolean value to JSON. */
@@ -494,7 +561,7 @@ export function valueToJSON<ErrorType extends CloneableErrorTypes>(
 /** Serialize a {@linkcode Deno.KvU64} value to JSON. */
 export function valueToJSON(value: Deno.KvU64): KvKvU64JSON;
 /** Serialize a {@linkcode Map} value to JSON. */
-export function valueToJSON<K, V>(value: Map<K, V>): KvMapJSON<K, V>;
+export function valueToJSON(value: Map<unknown, unknown>): KvMapJSON;
 /** Serialize a `null` value to JSON. */
 export function valueToJSON(value: null): KvNullJSON;
 /** Serialize a number value to JSON. */
@@ -502,7 +569,7 @@ export function valueToJSON(value: number): KvNumberJSON;
 /** Serialize a {@linkcode RegExp} value to JSON. */
 export function valueToJSON(value: RegExp): KvRegExpJSON;
 /** Serialize a {@linkcode Set} value to JSON. */
-export function valueToJSON<T>(value: Set<T>): KvSetJSON<T>;
+export function valueToJSON(value: Set<unknown>): KvSetJSON;
 /** Serialize a string value to JSON. */
 export function valueToJSON(value: string): KvStringJSON;
 /** Serialize a typed array value to JSON. */
@@ -516,7 +583,7 @@ export function valueToJSON(value: DataView): KvDataViewJSON;
 /** Serialize a `undefined` value to JSON. */
 export function valueToJSON(value: undefined): KvUndefinedJSON;
 /** Serialize a object value to JSON. */
-export function valueToJSON<T extends object>(value: T): KvObjectJSON<T>;
+export function valueToJSON(value: object): KvObjectJSON;
 /** Serialize a value to JSON. */
 export function valueToJSON(value: unknown): KvValueJSON;
 export function valueToJSON(value: unknown): KvValueJSON {
@@ -530,7 +597,7 @@ export function valueToJSON(value: unknown): KvValueJSON {
       return { type: "undefined" };
     case "object":
       if (Array.isArray(value)) {
-        return { type: "Array", value: [...value] };
+        return { type: "json_array", value: value.map(valueToJSON) };
       }
       if (value instanceof DataView) {
         return { type: "DataView", value: encodeBase64Url(value.buffer) };
@@ -551,7 +618,14 @@ export function valueToJSON(value: unknown): KvValueJSON {
         return errorToJSON(value);
       }
       if (value instanceof Map) {
-        return { type: "Map", value: [...value.entries()] };
+        return {
+          type: "json_map",
+          value: [
+            ...value.entries().map((
+              [key, value],
+            ) => [valueToJSON(key), valueToJSON(value)]),
+          ] as [KvValueJSON, KvValueJSON][],
+        };
       }
       if (value === null) {
         return { type: "null", value };
@@ -560,9 +634,9 @@ export function valueToJSON(value: unknown): KvValueJSON {
         return { type: "RegExp", value: String(value) };
       }
       if (value instanceof Set) {
-        return { type: "Set", value: [...value] };
+        return { type: "json_set", value: [...value].map(valueToJSON) };
       }
-      return { type: "object", value: structuredClone(value) };
+      return { type: "json_object", value: encodeObject(value) };
     default:
       throw new TypeError("Unexpected value type, unable to serialize.");
   }
@@ -714,7 +788,15 @@ export function toValue(json: KvArrayBufferJSON): ArrayBuffer;
  * Deserialize {@linkcode KvArrayJSON} to an array which can be stored in a Deno
  * KV store.
  */
-export function toValue<T>(json: KvArrayJSON<T>): T[];
+export function toValue(json: KvArrayJSON): unknown[];
+/**
+ * Deserialize {@linkcode KvLegacyArrayJSON} to an array which can be stored in a Deno
+ * KV store.
+ *
+ * @deprecated This is a legacy representation and is only retained for
+ * compatibility with older versions of the library.
+ */
+export function toValue<T>(json: KvLegacyArrayJSON<T>): T[];
 /**
  * Deserialize {@linkcode KvBigIntJSON} to a bigint which can be stored in a
  * Deno KV store.
@@ -751,7 +833,15 @@ export function toValue(json: KvKvU64JSON): Deno.KvU64;
  * Deserialize {@linkcode KvMapJSON} to a {@linkcode Map} which can be stored in
  * a Deno KV store.
  */
-export function toValue<K, V>(json: KvMapJSON<K, V>): Map<K, V>;
+export function toValue(json: KvMapJSON): Map<unknown, unknown>;
+/**
+ * Deserialize {@linkcode KvLegacyMapJSON} to a {@linkcode Map} which can be stored in
+ * a Deno KV store.
+ *
+ * @deprecated This is a legacy representation and is only retained for
+ * compatibility with older versions of the library.
+ */
+export function toValue<K, V>(json: KvLegacyMapJSON<K, V>): Map<K, V>;
 /**
  * Deserialize {@linkcode KvNullJSON} to a `null` which can be stored in a Deno
  * KV store.
@@ -766,7 +856,15 @@ export function toValue(json: KvNumberJSON): number;
  * Deserialize {@linkcode KvObjectJSON} to a value which can be stored in a Deno
  * KV store.
  */
-export function toValue<T>(json: KvObjectJSON<T>): T;
+export function toValue(json: KvObjectJSON): Record<string, unknown>;
+/**
+ * Deserialize {@linkcode KvLegacyObjectJSON} to a value which can be stored in
+ * a Deno KV store.
+ *
+ * @deprecated This is a legacy representation and is only retained for
+ * compatibility with older versions of the library.
+ */
+export function toValue<T>(json: KvLegacyObjectJSON<T>): T;
 /**
  * Deserialize {@linkcode KvRegExpJSON} to a {@linkcode RegExp} which can be
  * stored in a Deno KV store.
@@ -776,7 +874,15 @@ export function toValue(json: KvRegExpJSON): RegExp;
  * Deserialize {@linkcode KvSetJSON} to a {@linkcode Set} which can be stored in
  * a Deno KV store.
  */
-export function toValue<T>(json: KvSetJSON<T>): Set<T>;
+export function toValue(json: KvSetJSON): Set<unknown>;
+/**
+ * Deserialize {@linkcode KvLegacySetJSON} to a {@linkcode Set} which can be
+ * stored in a Deno KV store.
+ *
+ * @deprecated This is a legacy representation and is only retained for
+ * compatibility with older versions of the library.
+ */
+export function toValue<T>(json: KvLegacySetJSON<T>): Set<T>;
 /**
  * Deserialize {@linkcode KvStringJSON} to a string which can be stored in a
  * Deno KV store.
@@ -801,6 +907,16 @@ export function toValue(json: KvUndefinedJSON): undefined;
 export function toValue(json: KvValueJSON): unknown;
 export function toValue(json: KvValueJSON): unknown {
   switch (json.type) {
+    case "json_array":
+      return json.value.map(toValue);
+    case "json_map":
+      return new Map(json.value.map((
+        [key, value]: [KvValueJSON, KvValueJSON],
+      ) => [toValue(key), toValue(value)]) as [unknown, unknown][]);
+    case "json_object":
+      return decodeObject(json.value);
+    case "json_set":
+      return new Set(json.value.map(toValue));
     case "Array":
     case "null":
     case "object":

@@ -31,9 +31,26 @@ Deno.test({
 });
 
 Deno.test({
-  name: "toValue - Array",
+  name: "toValue - legacy array",
   fn() {
     assertEquals(toValue({ type: "Array", value: [1, 2, 3] }), [1, 2, 3]);
+  },
+});
+
+Deno.test({
+  name: "toValue - Array",
+  fn() {
+    assertEquals(
+      toValue({
+        type: "json_array",
+        value: [
+          { type: "number", value: 1 },
+          { type: "number", value: 2 },
+          { type: "number", value: 3 },
+        ],
+      }),
+      [1, 2, 3],
+    );
   },
 });
 
@@ -181,11 +198,30 @@ Deno.test({
 });
 
 Deno.test({
-  name: "toValue - Map",
+  name: "toValue - legacy Map",
   fn() {
     const actual = toValue({
       type: "Map",
       value: [["key", "value"], ["key2", "value2"]],
+    });
+    assert(actual instanceof Map);
+    assertEquals(actual.size, 2);
+    assertEquals(actual.get("key"), "value");
+  },
+});
+
+Deno.test({
+  name: "toValue - Map",
+  fn() {
+    const actual = toValue({
+      type: "json_map",
+      value: [[
+        { type: "string", value: "key" },
+        { type: "string", value: "value" },
+      ], [
+        { type: "string", value: "key2" },
+        { type: "string", value: "value2" },
+      ]],
     });
     assert(actual instanceof Map);
     assertEquals(actual.size, 2);
@@ -208,11 +244,26 @@ Deno.test({
 });
 
 Deno.test({
-  name: "toValue - object",
+  name: "toValue - legacy object",
   fn() {
     assertEquals(toValue({ type: "object", value: { foo: "bar" } }), {
       foo: "bar",
     });
+  },
+});
+
+Deno.test({
+  name: "toValue - object",
+  fn() {
+    assertEquals(
+      toValue({
+        type: "json_object",
+        value: { foo: { type: "string", value: "bar" } },
+      }),
+      {
+        foo: "bar",
+      },
+    );
   },
 });
 
@@ -227,9 +278,26 @@ Deno.test({
 });
 
 Deno.test({
-  name: "toValue - Set",
+  name: "toValue - legacy Set",
   fn() {
     const actual = toValue({ type: "Set", value: [1, 2, 3] });
+    assert(actual instanceof Set);
+    assertEquals(actual.size, 3);
+    assert(actual.has(1));
+  },
+});
+
+Deno.test({
+  name: "toValue - Set",
+  fn() {
+    const actual = toValue({
+      type: "json_set",
+      value: [
+        { type: "number", value: 1 },
+        { type: "number", value: 2 },
+        { type: "number", value: 3 },
+      ],
+    });
     assert(actual instanceof Set);
     assertEquals(actual.size, 3);
     assert(actual.has(1));
@@ -375,8 +443,12 @@ Deno.test({
   fn() {
     const actual = valueToJSON([1, 2, 3]);
     assertEquals(actual, {
-      type: "Array",
-      value: [1, 2, 3],
+      type: "json_array",
+      value: [
+        { type: "number", value: 1 },
+        { type: "number", value: 2 },
+        { type: "number", value: 3 },
+      ],
     });
   },
 });
@@ -528,8 +600,10 @@ Deno.test({
   fn() {
     const actual = valueToJSON(new Map([["key", "value"]]));
     assertEquals(actual, {
-      type: "Map",
-      value: [["key", "value"]],
+      type: "json_map",
+      value: [
+        [{ type: "string", value: "key" }, { type: "string", value: "value" }],
+      ],
     });
   },
 });
@@ -583,8 +657,12 @@ Deno.test({
   fn() {
     const actual = valueToJSON(new Set([1, 2, 3]));
     assertEquals(actual, {
-      type: "Set",
-      value: [1, 2, 3],
+      type: "json_set",
+      value: [
+        { type: "number", value: 1 },
+        { type: "number", value: 2 },
+        { type: "number", value: 3 },
+      ],
     });
   },
 });
@@ -736,8 +814,8 @@ Deno.test({
   fn() {
     const actual = valueToJSON({ key: "value" });
     assertEquals(actual, {
-      type: "object",
-      value: { key: "value" },
+      type: "json_object",
+      value: { key: { type: "string", value: "value" } },
     });
   },
 });
@@ -987,8 +1065,12 @@ Deno.test({
     assertEquals(actual, {
       key: [{ type: "string", value: "a" }],
       value: {
-        type: "Array",
-        value: [1, 2, 3],
+        type: "json_array",
+        value: [
+          { type: "number", value: 1 },
+          { type: "number", value: 2 },
+          { type: "number", value: 3 },
+        ],
       },
       versionstamp: "00000000",
     });
@@ -1006,8 +1088,12 @@ Deno.test({
     assertEquals(actual, {
       key: [{ type: "string", value: "a" }],
       value: {
-        type: "Array",
-        value: [1, 2, 3],
+        type: "json_array",
+        value: [
+          { type: "number", value: 1 },
+          { type: "number", value: 2 },
+          { type: "number", value: 3 },
+        ],
       },
       versionstamp: "00000000",
     });
