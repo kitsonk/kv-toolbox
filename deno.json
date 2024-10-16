@@ -8,10 +8,12 @@
     "./crypto": "./crypto.ts",
     "./json": "./json.ts",
     "./keys": "./keys.ts",
-    "./ndjson": "./ndjson.ts"
+    "./ndjson": "./ndjson.ts",
+    "./size_of": "./size_of.ts"
   },
   "publish": {
     "exclude": [
+      "*.bench.ts",
       "*.test.ts",
       ".github",
       ".vscode",

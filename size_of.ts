@@ -1,5 +1,5 @@
 /**
- * An internal module to estimate the byte size of a value.
+ * A module to estimate the byte size of a value.
  *
  * @module
  */
@@ -128,10 +128,32 @@ function getCalc(seen: WeakSet<object>): (value: unknown) => number {
 
 /**
  * Estimates the size, in bytes, of the V8 serialized form of the value, which
- * is used to determine the size of messages being stored with Deno KV.
+ * is used to determine the size of entries being stored in a Deno KV store.
  *
- * This exists when V8 serialize is not available, like when running on Deno
- * Deploy.
+ * This is useful when you want to determine the size of a value before using
+ * it as a KV store entry. KV has a key part limit of 2k and a value limit of
+ * 64 KB. There are also limits on the total size of atomic operations.
+ *
+ * kv-toolbox uses this function to estimate the size of items being stored as
+ * blobs in the KV store, as well as the size of atomic operations.
+ *
+ * A more accurate estimate can be obtained by using the V8 `serialize` function
+ * but this isn't available in some environments, as well as being 10x slower
+ * than this function.
+ *
+ * > [!NOTE]
+ * > The size of the value is an estimate and may not be 100% accurate. Also,
+ * > a size of the operation may have some opaque overhead. Users should err on
+ * > the side of caution and keep the size of the value below the limits.
+ *
+ * @example Get the size of a value
+ *
+ * ```ts
+ * import { sizeOf } from "jsr:@kitsonk/kv-toolbox/size_of";
+ *
+ * const value = { a: new Map([[{ a: 1 }, { b: /234/ }]]), b: false };
+ * console.log(sizeOf(value)); // 36
+ * ```
  */
 export function sizeOf(value: unknown): number {
   return getCalc(new WeakSet())(value);
