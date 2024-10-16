@@ -106,6 +106,7 @@ import {
 } from "./ndjson.ts";
 
 export { generateKey } from "./crypto.ts";
+export { sizeOf } from "./size_of.ts";
 
 /**
  * A toolbox for interacting with a Deno KV store.

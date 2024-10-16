@@ -1,5 +1,15 @@
 # kv-toolbox change log
 
+## Version 0.21.0
+
+- feat: make sizeOf public (738b6bf)
+
+  `sizeOf()` was previously just internal, but it is generally useful when
+  working with Deno KV to be able to estimate the size of keys and values. The
+  Deno KV documentation currently suggests using the length of
+  `JSON.stringify()` string, which can be very problematic when dealing with
+  complex values that don't serialize to JSON but are storable in Deno KV.
+
 ## Version 0.20.1
 
 - fix: make json module browser compatible (422df76)
