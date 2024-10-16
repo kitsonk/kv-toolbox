@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.20.1
+
+- fix: make json module browser compatible (422df76)
+
 ## Version 0.20.0
 
 - feat: arrays, objects, maps and sets are deeply serialized (bf8f285)
