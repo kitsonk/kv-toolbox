@@ -611,7 +611,7 @@ export function valueToJSON(value: unknown): KvValueJSON {
       if (value instanceof Date) {
         return { type: "Date", value: value.toJSON() };
       }
-      if (value instanceof Deno.KvU64) {
+      if ("Deno" in globalThis && value instanceof Deno.KvU64) {
         return { type: "KvU64", value: String(value) };
       }
       if (value instanceof Error) {
