@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.21.1
+
+- fix: add `.watch()` method to toolbox (d7c916f)
+
 ## Version 0.21.0
 
 - feat: make sizeOf public (738b6bf)

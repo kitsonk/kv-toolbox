@@ -51,21 +51,23 @@
  * capabilities of the toolbox are provided by additional exports of the
  * library:
  *
- * - [batched_atomic](../doc/batched_atomic/~) - Provides a way to perform
+ * - [batched_atomic](https://jsr.io/@kitsonk/kv-toolbox/doc/batched_atomic) - Provides a way to perform
  *   atomic operations in batches while working around the limitations of
  *   Deno KV.
- * - [blob](../doc/blob/~) - Provides a way to store arbitrarily large binary
+ * - [blob](https://jsr.io/@kitsonk/kv-toolbox/doc/blob) - Provides a way to store arbitrarily large binary
  *   data in Deno KV.
- * - [crypto](../doc/crypto/~) - Provides a way to encrypt and decrypt data in
+ * - [crypto](https://jsr.io/@kitsonk/kv-toolbox/doc/crypto) - Provides a way to encrypt and decrypt data in
  *   Deno KV.
- * - [json](../doc/json/~) - Provides utilities for handling Deno KV entries,
+ * - [json](https://jsr.io/@kitsonk/kv-toolbox/doc/json) - Provides utilities for handling Deno KV entries,
  *   keys, and values as structures which can be serialized and deserialized to
  *   JSON.
- * - [keys](../doc/keys/~) - Provides convenience functions for working with
+ * - [keys](https://jsr.io/@kitsonk/kv-toolbox/doc/keys) - Provides convenience functions for working with
  *   keys in Deno KV.
- * - [ndjson](../doc/ndjson/~) - Utilities for handling NDJSON which is a method
+ * - [ndjson](https://jsr.io/@kitsonk/kv-toolbox/doc/ndjson) - Utilities for handling NDJSON which is a method
  *   for encoding JSON in a way that supports streaming, where each JSON entity
  *   is separated with a newline.
+ * - [size_of](https://jsr.io/@kitsonk/kv-toolbox/doc/size_of) - Provides a way to calculate the size of a
+ *   JavaScript object in bytes.
  *
  * @module
  */
