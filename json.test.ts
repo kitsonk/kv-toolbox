@@ -433,6 +433,7 @@ Deno.test({
     const actual = valueToJSON(ab);
     assertEquals(actual, {
       type: "ArrayBuffer",
+      byteLength: 3,
       value: "AQID",
     });
   },
@@ -482,6 +483,7 @@ Deno.test({
     const actual = valueToJSON(dataView);
     assertEquals(actual, {
       type: "DataView",
+      byteLength: 3,
       value: "AQID",
     });
   },
@@ -684,6 +686,7 @@ Deno.test({
     const actual = valueToJSON(new Int8Array([1, 2, 3]));
     assertEquals(actual, {
       type: "Int8Array",
+      byteLength: 3,
       value: "AQID",
     });
   },
@@ -695,6 +698,7 @@ Deno.test({
     const actual = valueToJSON(new Uint8Array([1, 2, 3]));
     assertEquals(actual, {
       type: "Uint8Array",
+      byteLength: 3,
       value: "AQID",
     });
   },
@@ -706,6 +710,7 @@ Deno.test({
     const actual = valueToJSON(new Uint8ClampedArray([1, 2, 3]));
     assertEquals(actual, {
       type: "Uint8ClampedArray",
+      byteLength: 3,
       value: "AQID",
     });
   },
@@ -717,6 +722,7 @@ Deno.test({
     const actual = valueToJSON(new Int16Array([1, 2, 3, 4]));
     assertEquals(actual, {
       type: "Int16Array",
+      byteLength: 8,
       value: "AQACAAMABAA",
     });
   },
@@ -728,6 +734,7 @@ Deno.test({
     const actual = valueToJSON(new Uint16Array([1, 2, 3, 4]));
     assertEquals(actual, {
       type: "Uint16Array",
+      byteLength: 8,
       value: "AQACAAMABAA",
     });
   },
@@ -739,6 +746,7 @@ Deno.test({
     const actual = valueToJSON(new Int32Array([1, 2, 3, 4]));
     assertEquals(actual, {
       type: "Int32Array",
+      byteLength: 16,
       value: "AQAAAAIAAAADAAAABAAAAA",
     });
   },
@@ -750,6 +758,7 @@ Deno.test({
     const actual = valueToJSON(new Uint32Array([1, 2, 3, 4]));
     assertEquals(actual, {
       type: "Uint32Array",
+      byteLength: 16,
       value: "AQAAAAIAAAADAAAABAAAAA",
     });
   },
@@ -761,6 +770,7 @@ Deno.test({
     const actual = valueToJSON(new Float32Array([1.2, 3.4, 5.6]));
     assertEquals(actual, {
       type: "Float32Array",
+      byteLength: 12,
       value: "mpmZP5qZWUAzM7NA",
     });
   },
@@ -772,6 +782,7 @@ Deno.test({
     const actual = valueToJSON(new Float64Array([1.2, 3.4, 5.6]));
     assertEquals(actual, {
       type: "Float64Array",
+      byteLength: 24,
       value: "MzMzMzMz8z8zMzMzMzMLQGZmZmZmZhZA",
     });
   },
@@ -783,6 +794,7 @@ Deno.test({
     const actual = valueToJSON(new BigInt64Array([1n, 2n, 3n]));
     assertEquals(actual, {
       type: "BigInt64Array",
+      byteLength: 24,
       value: "AQAAAAAAAAACAAAAAAAAAAMAAAAAAAAA",
     });
   },
@@ -794,6 +806,7 @@ Deno.test({
     const actual = valueToJSON(new BigUint64Array([1n, 2n, 3n]));
     assertEquals(actual, {
       type: "BigUint64Array",
+      byteLength: 24,
       value: "AQAAAAAAAAACAAAAAAAAAAMAAAAAAAAA",
     });
   },

@@ -141,6 +141,7 @@ export type KvKeyJSON = KvKeyPartJSON[];
  */
 export interface KvArrayBufferJSON {
   type: "ArrayBuffer";
+  byteLength?: number;
   value: string;
 }
 
@@ -176,6 +177,7 @@ export interface KvArrayJSON {
  */
 export interface KvDataViewJSON {
   type: "DataView";
+  byteLength?: number;
   value: string;
 }
 
@@ -358,6 +360,7 @@ export interface KvTypedArrayJSON<
   ArrayType extends TypedArrayTypes = TypedArrayTypes,
 > {
   type: ArrayType;
+  byteLength?: number | undefined;
   value: string;
 }
 
@@ -460,38 +463,39 @@ function errorToJSON(error: Error): KvErrorJSON {
 /** Internal function to serialize various typed arrays to JSON. */
 function typedArrayToJSON(typedArray: ArrayBufferView): KvTypedArrayJSON {
   const value = encodeBase64Url(typedArray.buffer);
+  const byteLength = typedArray.byteLength;
   if (typedArray instanceof Int8Array) {
-    return { type: "Int8Array", value };
+    return { type: "Int8Array", byteLength, value };
   }
   if (typedArray instanceof Uint8Array) {
-    return { type: "Uint8Array", value };
+    return { type: "Uint8Array", byteLength, value };
   }
   if (typedArray instanceof Uint8ClampedArray) {
-    return { type: "Uint8ClampedArray", value };
+    return { type: "Uint8ClampedArray", byteLength, value };
   }
   if (typedArray instanceof Int16Array) {
-    return { type: "Int16Array", value };
+    return { type: "Int16Array", byteLength, value };
   }
   if (typedArray instanceof Uint16Array) {
-    return { type: "Uint16Array", value };
+    return { type: "Uint16Array", byteLength, value };
   }
   if (typedArray instanceof Int32Array) {
-    return { type: "Int32Array", value };
+    return { type: "Int32Array", byteLength, value };
   }
   if (typedArray instanceof Uint32Array) {
-    return { type: "Uint32Array", value };
+    return { type: "Uint32Array", byteLength, value };
   }
   if (typedArray instanceof Float32Array) {
-    return { type: "Float32Array", value };
+    return { type: "Float32Array", byteLength, value };
   }
   if (typedArray instanceof Float64Array) {
-    return { type: "Float64Array", value };
+    return { type: "Float64Array", byteLength, value };
   }
   if (typedArray instanceof BigInt64Array) {
-    return { type: "BigInt64Array", value };
+    return { type: "BigInt64Array", byteLength, value };
   }
   if (typedArray instanceof BigUint64Array) {
-    return { type: "BigUint64Array", value };
+    return { type: "BigUint64Array", byteLength, value };
   }
   throw TypeError("Unexpected typed array type, could not serialize.");
 }
@@ -600,13 +604,21 @@ export function valueToJSON(value: unknown): KvValueJSON {
         return { type: "json_array", value: value.map(valueToJSON) };
       }
       if (value instanceof DataView) {
-        return { type: "DataView", value: encodeBase64Url(value.buffer) };
+        return {
+          type: "DataView",
+          byteLength: value.byteLength,
+          value: encodeBase64Url(value.buffer),
+        };
       }
       if (ArrayBuffer.isView(value)) {
         return typedArrayToJSON(value);
       }
       if (value instanceof ArrayBuffer) {
-        return { type: "ArrayBuffer", value: encodeBase64Url(value) };
+        return {
+          type: "ArrayBuffer",
+          byteLength: value.byteLength,
+          value: encodeBase64Url(value),
+        };
       }
       if (value instanceof Date) {
         return { type: "Date", value: value.toJSON() };
