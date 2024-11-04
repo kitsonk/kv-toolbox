@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.22.0
+
+- feat: add `byteLength` to JSON serialization of byte arrays (2615a07)
+
 ## Version 0.21.1
 
 - fix: add `.watch()` method to toolbox (d7c916f)
