@@ -58,16 +58,18 @@
  *   data in Deno KV.
  * - [crypto](https://jsr.io/@kitsonk/kv-toolbox/doc/crypto) - Provides a way to encrypt and decrypt data in
  *   Deno KV.
- * - [json](https://jsr.io/@kitsonk/kv-toolbox/doc/json) - Provides utilities for handling Deno KV entries,
- *   keys, and values as structures which can be serialized and deserialized to
- *   JSON.
  * - [keys](https://jsr.io/@kitsonk/kv-toolbox/doc/keys) - Provides convenience functions for working with
  *   keys in Deno KV.
  * - [ndjson](https://jsr.io/@kitsonk/kv-toolbox/doc/ndjson) - Utilities for handling NDJSON which is a method
  *   for encoding JSON in a way that supports streaming, where each JSON entity
  *   is separated with a newline.
- * - [size_of](https://jsr.io/@kitsonk/kv-toolbox/doc/size_of) - Provides a way to calculate the size of a
- *   JavaScript object in bytes.
+ *
+ * ## `@deno/kv-utils`
+ *
+ * Parts of `kv-toolbox` were contributed to the
+ * [`@deno/kv-utils`](https://jsr.io/@deno/kv-utils) package, like specifically
+ * the JSON serialization and the ability to estimate the size of keys and
+ * values.
  *
  * @module
  */
@@ -108,7 +110,6 @@ import {
 } from "./ndjson.ts";
 
 export { generateKey } from "./crypto.ts";
-export { sizeOf } from "./size_of.ts";
 
 /**
  * A toolbox for interacting with a Deno KV store.

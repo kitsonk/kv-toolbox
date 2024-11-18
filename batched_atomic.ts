@@ -29,9 +29,10 @@
  * @module
  */
 
+import { estimateSize } from "@deno/kv-utils/estimate-size";
+
 import { BLOB_KEY, BLOB_META_KEY, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
-import { sizeOf } from "./size_of.ts";
 
 interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
   deleteBlob(key: Deno.KvKey): this;
@@ -279,7 +280,7 @@ export class BatchedAtomicOperation {
           checks++;
           for (const { key } of args as Deno.AtomicCheck[]) {
             const len = key.reduce(
-              (prev: number, part: Deno.KvKeyPart) => prev + sizeOf(part),
+              (prev: number, part: Deno.KvKeyPart) => prev + estimateSize(part),
               0,
             );
             payloadBytes += len;
@@ -290,33 +291,33 @@ export class BatchedAtomicOperation {
           mutations++;
           if (method === "mutate") {
             for (const mutation of args as Deno.KvMutation[]) {
-              const keyLen = sizeOf(mutation.key);
+              const keyLen = estimateSize(mutation.key);
               payloadBytes += keyLen;
               keyBytes += keyLen;
               if (mutation.type === "set") {
-                payloadBytes += sizeOf(mutation.value);
+                payloadBytes += estimateSize(mutation.value);
               } else if (mutation.type !== "delete") {
                 payloadBytes += 8;
               }
             }
           } else if (method === "max" || method === "min" || method === "sum") {
             const [key] = args as [Deno.KvKey];
-            const keyLen = sizeOf(key);
+            const keyLen = estimateSize(key);
             keyBytes += keyLen;
             payloadBytes += keyLen + 8;
           } else if (method === "set") {
             const [key, value] = args as [Deno.KvKey, unknown];
-            const keyLen = sizeOf(key);
+            const keyLen = estimateSize(key);
             keyBytes += keyLen;
-            payloadBytes += keyLen + sizeOf(value);
+            payloadBytes += keyLen + estimateSize(value);
           } else if (method === "delete") {
             const [key] = args as [Deno.KvKey];
-            const keyLen = sizeOf(key);
+            const keyLen = estimateSize(key);
             keyBytes += keyLen;
             payloadBytes += keyLen;
           } else if (method === "enqueue") {
             const [value] = args as [unknown];
-            payloadBytes += sizeOf(value);
+            payloadBytes += estimateSize(value);
           }
         }
         if (

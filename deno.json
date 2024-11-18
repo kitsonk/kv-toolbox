@@ -6,10 +6,8 @@
     "./batched_atomic": "./batched_atomic.ts",
     "./blob": "./blob.ts",
     "./crypto": "./crypto.ts",
-    "./json": "./json.ts",
     "./keys": "./keys.ts",
-    "./ndjson": "./ndjson.ts",
-    "./size_of": "./size_of.ts"
+    "./ndjson": "./ndjson.ts"
   },
   "publish": {
     "exclude": [
@@ -27,5 +25,9 @@
     "test": "deno test --allow-read --allow-write --unstable-kv --parallel",
     "test:ci": "deno test --allow-read --allow-write --unstable-kv --coverage=./cov --parallel"
   },
-  "lock": false
+  "lock": false,
+  "imports": {
+    "@deno/kv-utils": "jsr:@deno/kv-utils@^0.1.1",
+    "@std/bytes": "jsr:@std/bytes@~1"
+  }
 }

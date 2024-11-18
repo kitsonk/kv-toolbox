@@ -31,9 +31,13 @@
  * @module
  */
 
-import { concat } from "jsr:@std/bytes@~1/concat";
-
-import { entryToJSON, type KvEntryJSON, toKey, toValue } from "./json.ts";
+import {
+  entryToJSON,
+  type KvEntryJSON,
+  toKey,
+  toValue,
+} from "@deno/kv-utils/json";
+import { concat } from "@std/bytes/concat";
 
 export interface ExportEntriesOptionsJSON extends Deno.KvListOptions {
   /**
