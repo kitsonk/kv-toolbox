@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.23.0
+
+- feat: migrate to @deno/kv-utils (68f23a0)
+
 ## Version 0.22.0
 
 - feat: add `byteLength` to JSON serialization of byte arrays (2615a07)
