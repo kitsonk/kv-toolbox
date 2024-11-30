@@ -6,8 +6,7 @@
     "./batched_atomic": "./batched_atomic.ts",
     "./blob": "./blob.ts",
     "./crypto": "./crypto.ts",
-    "./keys": "./keys.ts",
-    "./ndjson": "./ndjson.ts"
+    "./keys": "./keys.ts"
   },
   "publish": {
     "exclude": [
@@ -27,7 +26,7 @@
   },
   "lock": false,
   "imports": {
-    "@deno/kv-utils": "jsr:@deno/kv-utils@^0.1.1",
+    "@deno/kv-utils": "jsr:@deno/kv-utils@^0.1.2",
     "@std/bytes": "jsr:@std/bytes@~1"
   }
 }

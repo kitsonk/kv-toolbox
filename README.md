@@ -200,35 +200,11 @@ alternative
 
 ## NDJSON
 
-New line delimitated JSON ([NDJSON](https://github.com/ndjson/ndjson-spec)) is a
-standard for supporting JSON string encoding of data where each record of data
-is delimitated by a new line. This particular format is the most straight-
-forward way of supporting JSON encoding and streaming.
-
-The toolbox includes the capabilities to export entries from a KV store to
-NDJSON, transform a byte stream of NDJSON into individual JSON KV entry
-representations, and be able to import KV entries from NDJSON encoded data.
-
-### `exportEntries()`
-
-Like `Deno.Kv.prototype.list()`, but entries are returned as a stream of bytes
-or strings encoded as NDJSON.
-
-### `exportToResponse()`
-
-Like `Deno.Kv.prototype.list()`, but a `Response` is returned with the selected
-entries encoded as NDJSON as the body of the response, suitable for sending to a
-client as a response to a query.
-
-### `LineTransformStream()`
-
-A transform stream which takes a byte stream, like from a `Request` body, of
-NDJSON encoded entry data and transforms it into individual chunks of JSON
-strings which can be used with `JSON.parse()`.
-
-### `importEntries()`
-
-Takes NDJSON encoded data and imports it into a Deno KV store.
+> [!IMPORTANT]
+> The ability to import and export NDJSON has been contributed to
+> [@deno/kv-utils](https://jsr.io/@deno/kv-utils/) and will be maintained there.
+> The toolbox includes this capability, but this package does not contain the
+> utilities anymore.
 
 ## Keys
 

@@ -60,19 +60,27 @@
  *   Deno KV.
  * - [keys](https://jsr.io/@kitsonk/kv-toolbox/doc/keys) - Provides convenience functions for working with
  *   keys in Deno KV.
- * - [ndjson](https://jsr.io/@kitsonk/kv-toolbox/doc/ndjson) - Utilities for handling NDJSON which is a method
- *   for encoding JSON in a way that supports streaming, where each JSON entity
- *   is separated with a newline.
  *
  * ## `@deno/kv-utils`
  *
  * Parts of `kv-toolbox` were contributed to the
  * [`@deno/kv-utils`](https://jsr.io/@deno/kv-utils) package, like specifically
- * the JSON serialization and the ability to estimate the size of keys and
- * values.
+ * the JSON serialization, the ability to estimate the size of keys and
+ * values, and the ability to import and export to NDJSON.
  *
  * @module
  */
+
+import {
+  exportEntries,
+  type ExportEntriesOptions,
+  type ExportEntriesOptionsBytes,
+  type ExportEntriesOptionsResponse,
+  type ExportEntriesOptionsString,
+  importEntries,
+  type ImportEntriesOptions,
+  type ImportEntriesResult,
+} from "@deno/kv-utils/import-export";
 
 import {
   type BatchAtomicOptions,
@@ -99,15 +107,6 @@ import {
   uniqueCount,
   type UniqueCountElement,
 } from "./keys.ts";
-import {
-  exportEntries,
-  type ExportEntriesOptionsBytes,
-  type ExportEntriesOptionsJSON,
-  exportToResponse,
-  importEntries,
-  type ImportEntriesOptions,
-  type ImportEntriesResult,
-} from "./ndjson.ts";
 
 export { generateKey } from "./crypto.ts";
 
@@ -294,16 +293,7 @@ export class KvToolbox implements Disposable {
    */
   export(
     selector: Deno.KvListSelector,
-    options: {
-      close?: boolean;
-      response: true;
-      /**
-       * If provided, the response will include a header that indicates the file is
-       * meant to be downloaded (`Content-Disposition`). The extension `.ndjson`
-       * will be appended to the filename.
-       */
-      filename?: string;
-    },
+    options: ExportEntriesOptionsResponse,
   ): Response;
   /**
    * Like {@linkcode Deno.Kv} `.list()` method, but returns a
@@ -313,7 +303,7 @@ export class KvToolbox implements Disposable {
    */
   export(
     selector: Deno.KvListSelector,
-    options: ExportEntriesOptionsJSON,
+    options: ExportEntriesOptionsString,
   ): ReadableStream<string>;
   /**
    * Like {@linkcode Deno.Kv} `.list()` method, but returns a
@@ -331,14 +321,13 @@ export class KvToolbox implements Disposable {
     options:
       | { close?: boolean; response: true; filename?: string }
       | (
-        | ExportEntriesOptionsJSON
+        | ExportEntriesOptions
         | ExportEntriesOptionsBytes
+        | ExportEntriesOptionsResponse
       )
         & { response?: boolean | undefined } = {},
   ): Response | ReadableStream<string | Uint8Array> {
-    return options.response
-      ? exportToResponse(this.#kv, selector, options)
-      : exportEntries(this.#kv, selector, options);
+    return exportEntries(this.#kv, selector, options);
   }
 
   /**
@@ -1461,7 +1450,7 @@ export function openKvToolbox(
  * ```
  */
 export function openKvToolbox(
-  options: { path?: string | undefined; encryptWith?: undefined },
+  options?: { path?: string | undefined; encryptWith?: undefined },
 ): Promise<KvToolbox>;
 export async function openKvToolbox(
   options?: {
