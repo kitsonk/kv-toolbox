@@ -1,5 +1,12 @@
 # kv-toolbox change log
 
+## Version 0.24.0
+
+- feat: migrate import/export to `@deno/kv-utils` (aab2420)
+- docs: type check inline documentation (deee889)
+- chore: only CI against Deno 2 (f9828ce)
+- chore: add Deno canary to CI (84a78ee)
+
 ## Version 0.23.0
 
 - feat: migrate to @deno/kv-utils (68f23a0)
