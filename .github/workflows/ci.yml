@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: ["2.0.X", "2.1.X"]
+        version: ["2.0.X", "2.1.X", canary]
     steps:
       - name: clone repository
         uses: actions/checkout@v4
