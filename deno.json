@@ -20,6 +20,7 @@
   },
   "tasks": {
     "bench": "deno bench --allow-read --allow-write --unstable-kv",
+    "check": "deno fmt --check && deno lint && deno check --doc *.ts",
     "coverage": "deno coverage --lcov --output=cov.lcov ./cov",
     "test": "deno test --allow-read --allow-write --unstable-kv --parallel",
     "test:ci": "deno test --allow-read --allow-write --unstable-kv --coverage=./cov --parallel"
@@ -27,6 +28,7 @@
   "lock": false,
   "imports": {
     "@deno/kv-utils": "jsr:@deno/kv-utils@^0.1.2",
+    "@std/assert": "jsr:@std/assert@~1",
     "@std/bytes": "jsr:@std/bytes@~1"
   }
 }

@@ -10,7 +10,7 @@
  * **Example**
  *
  * ```ts
- * import { equals } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { equals } from "@kitsonk/kv-toolbox/keys";
  *
  * const keyA = ["a", "b"];
  * const keyB = ["a", "b"];
@@ -33,7 +33,7 @@
  * **Example**
  *
  * ```ts
- * import { partEquals } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { partEquals } from "@kitsonk/kv-toolbox/keys";
  *
  * const keyA = ["a", "b"];
  * const keyB = ["a", "b"];
@@ -50,7 +50,7 @@
  * **Example**
  *
  * ```ts
- * import { startsWith } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { startsWith } from "@kitsonk/kv-toolbox/keys";
  *
  * const key = ["a", "b"];
  * const prefix = ["a"];
@@ -68,7 +68,7 @@
  *
  * If you had the following keys stored in a datastore:
  *
- * ```ts
+ * ```
  * ["a", "b"]
  * ["a", "b", "c"]
  * ["a", "d", "e"]
@@ -78,7 +78,7 @@
  * And you would get the following results when using `tree()`:
  *
  * ```ts
- * import { unique } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { unique } from "@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
  * console.log(await tree(kv, ["a"]));
@@ -112,7 +112,7 @@
  *
  * If you had the following keys stored in a datastore:
  *
- * ```ts
+ * ```
  * ["a", "b"]
  * ["a", "b", "c"]
  * ["a", "d", "e"]
@@ -122,7 +122,7 @@
  * And you would get the following results when using `unique()`:
  *
  * ```ts
- * import { unique } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { unique } from "@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
  * console.log(await unique(kv, ["a"]));
@@ -190,7 +190,7 @@ function addOrIncrement(
  * @example
  *
  * ```ts
- * import { partEquals } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { partEquals } from "@kitsonk/kv-toolbox/keys";
  *
  * const keyA = ["a", "b"];
  * const keyB = ["a", "b"];
@@ -220,7 +220,7 @@ export function partEquals(a: Deno.KvKeyPart, b: Deno.KvKeyPart): boolean {
  * @example
  *
  * ```ts
- * import { equals } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { equals } from "@kitsonk/kv-toolbox/keys";
  *
  * const keyA = ["a", "b"];
  * const keyB = ["a", "b"];
@@ -248,7 +248,7 @@ export function equals(a: Deno.KvKey, b: Deno.KvKey): boolean {
  * @example
  *
  * ```ts
- * import { startsWith } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { startsWith } from "@kitsonk/kv-toolbox/keys";
  *
  * const key = ["a", "b"];
  * const prefix = ["a"];
@@ -270,7 +270,7 @@ export function startsWith(key: Deno.KvKey, prefix: Deno.KvKey): boolean {
  * @example
  *
  * ```ts
- * import { keys } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { keys } from "@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
  * console.log(await keys(kv, { prefix: ["hello"] }));
@@ -300,7 +300,7 @@ export async function keys(
  *
  * The following keys stored in a datastore:
  *
- * ```ts
+ * ```
  * ["a", "b"]
  * ["a", "b", "c"]
  * ["a", "d", "e"]
@@ -310,7 +310,7 @@ export async function keys(
  * The following results when using `unique()`:
  *
  * ```ts
- * import { unique } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { unique } from "@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
  * console.log(await unique(kv, ["a"]));
@@ -372,7 +372,7 @@ export interface UniqueCountElement {
  *
  * If you had the following keys stored in a datastore:
  *
- * ```ts
+ * ```
  * ["a", "b"]
  * ["a", "b", "c"]
  * ["a", "d", "e"]
@@ -382,7 +382,7 @@ export interface UniqueCountElement {
  * And you would get the following results when using `uniqueCount()`:
  *
  * ```ts
- * import { uniqueCount } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { uniqueCount } from "@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
  * console.log(await uniqueCount(kv, ["a"]));
@@ -467,7 +467,7 @@ export interface KeyTree {
  *
  * If you had the following keys stored in a datastore:
  *
- * ```ts
+ * ```
  * ["a", "b"]
  * ["a", "b", "c"]
  * ["a", "d", "e"]
@@ -477,7 +477,7 @@ export interface KeyTree {
  * And you would get the following results when using `tree()`:
  *
  * ```ts
- * import { unique } from "jsr:@kitsonk/kv-toolbox/keys";
+ * import { unique } from "@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
  * console.log(await tree(kv, ["a"]));

@@ -403,7 +403,7 @@ export class CryptoKv {
    * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
    *
    * const kv = await openCryptoKv(generateKey());
-   * const value = await kv.getAsJson(["hello"]);
+   * const value = await kv.getAsJSON(["hello"]);
    * if (value) {
    *  // do something with value
    * }

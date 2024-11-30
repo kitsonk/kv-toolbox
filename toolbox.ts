@@ -172,7 +172,7 @@ export class KvToolbox implements Disposable {
    *
    * If you had the following keys stored in a datastore:
    *
-   * ```ts
+   * ```
    * ["a", "b"]
    * ["a", "b", "c"]
    * ["a", "d", "e"]
@@ -185,7 +185,7 @@ export class KvToolbox implements Disposable {
    * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
-   * console.log(await kv.count(["a"]));
+   * console.log(await kv.counts(["a"]));
    * // { key: ["a", "b"], count: 1 }
    * // { key: ["a", "d"], count: 2 }
    * await kv.close();
@@ -524,9 +524,11 @@ export class KvToolbox implements Disposable {
    * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
-   * const stream = await kv.getBlob(["hello"], { stream: true });
-   * for await (const chunk of stream) {
-   *   // do something with chunk
+   * const maybeEntry = await kv.getBlob(["hello"], { stream: true });
+   * if (maybeEntry.value) {
+   *   for await (const chunk of maybeEntry.value) {
+   *     // do something with chunk
+   *   }
    * }
    * await kv.close();
    * ```
@@ -874,7 +876,7 @@ export class KvToolbox implements Disposable {
    *
    * If you had the following keys stored in a datastore:
    *
-   * ```ts
+   * ```
    * ["a", "b"]
    * ["a", "b", "c"]
    * ["a", "d", "e"]
@@ -922,7 +924,7 @@ export class KvToolbox implements Disposable {
    *
    * The following keys stored in a datastore:
    *
-   * ```ts
+   * ```
    * ["a", "b"]
    * ["a", "b", "c"]
    * ["a", "d", "e"]
@@ -1050,9 +1052,11 @@ export class CryptoKvToolbox extends KvToolbox {
    * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
-   * const stream = await kv.getBlob(["hello"], { stream: true });
-   * for await (const chunk of stream) {
-   *   // do something with chunk
+   * const maybeEntry = await kv.getBlob(["hello"], { stream: true });
+   * if (maybeEntry.value) {
+   *   for await (const chunk of maybeEntry.value) {
+   *     // do something with chunk
+   *   }
    * }
    * await kv.close();
    * ```

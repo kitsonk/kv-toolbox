@@ -31,7 +31,7 @@
  * @example Basic usage
  *
  * ```ts
- * import { get, remove, set } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { get, remove, set } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const data = new TextEncoder().encode("hello deno!");
@@ -45,7 +45,7 @@
  * @example Setting and getting `File`s
  *
  * ```ts
- * import { getAsBlob, remove, set } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { getAsBlob, remove, set } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * // assume this is form data submitted as a `Request`
@@ -230,7 +230,7 @@ function toParts(blob: ArrayBufferLike): string[] {
  * @example
  *
  * ```ts
- * import { remove } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { remove } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * await remove(kv, ["hello"]);
@@ -261,11 +261,13 @@ export function remove(kv: Deno.Kv, key: Deno.KvKey): Promise<void> {
  * @example
  *
  * ```ts
- * import { get } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { get } from "@kitsonk/kv-toolbox/blob";
+ * import { assert } from "@std/assert";
  *
  * const kv = await Deno.openKv();
- * const stream = await get(kv, ["hello"], { stream: true });
- * for await (const chunk of stream) {
+ * const maybeEntry = await get(kv, ["hello"], { stream: true });
+ * assert(maybeEntry.value);
+ * for await (const chunk of maybeEntry.value) {
  *   // do something with chunk
  * }
  * await kv.close();
@@ -294,7 +296,7 @@ export function get(
  * @example
  *
  * ```ts
- * import { get } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { get } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const blob = await get(kv, ["hello"], { blob: true });
@@ -325,7 +327,7 @@ export function get(
  * @example
  *
  * ```ts
- * import { get } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { get } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const ab = await get(kv, ["hello"]);
@@ -381,7 +383,7 @@ export async function get(
  * @example Getting a value
  *
  * ```ts
- * import { getAsBlob } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { getAsBlob } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const blob = await getAsBlob(kv, ["hello"]);
@@ -407,7 +409,7 @@ export async function getAsBlob(
  * @example Getting a value
  *
  * ```ts
- * import { getAsJSON } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { getAsJSON } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const json = JSON.stringify(await getAsJSON(kv, ["hello"]));
@@ -429,7 +431,7 @@ export function getAsJSON(
  * @example Getting meta data
  *
  * ```ts
- * import { getMeta } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { getMeta } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const maybeMeta = await getMeta(kv, ["hello"]));
@@ -551,7 +553,7 @@ export async function getAsResponse(
  * @example Getting a value
  *
  * ```ts
- * import { getAsStream } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { getAsStream } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const stream = await getAsStream(kv, ["hello"]);
@@ -584,7 +586,7 @@ export function getAsStream(
  * @example Setting a `Uint8Array`
  *
  * ```ts
- * import { set } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { set } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const blob = new TextEncoder().encode("hello deno!");
@@ -595,7 +597,7 @@ export function getAsStream(
  * @example Setting a `Blob`
  *
  * ```ts
- * import { set } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { set } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  * const blob = new Blob(
@@ -636,12 +638,14 @@ export async function set(
  * @example Storing and retrieving a blob string
  *
  * ```ts
- * import { getAsBlob, set, toBlob } from "jsr:@kitsonk/kv-toolbox/blob";
+ * import { getAsBlob, set, toBlob } from "@kitsonk/kv-toolbox/blob";
+ * import { assert } from "@std/assert";
  *
  * const kv = await Deno.openKv();
  * const blob = toBlob("some big string");
  * await set(kv, ["hello"], blob);
  * const value = await getAsBlob(kv, ["hello"]);
+ * assert(value);
  * const str = await value.text();
  * await kv.close();
  * ```
@@ -726,7 +730,7 @@ export async function toJSON(
  *
  * const file = toValue({
  *   meta: {
- *     type: "file",
+ *     kind: "file",
  *     lastModified: 1711349710546,
  *     name: "test.bin",
  *     type: "application/octet-stream",
@@ -746,7 +750,7 @@ export function toValue(json: BlobFileJSON): File;
  *
  * const blob = toValue({
  *   meta: {
- *     type: "blob",
+ *     kind: "blob",
  *     type: "application/octet-stream",
  *   },
  *   parts: ["AQID"],
@@ -763,7 +767,10 @@ export function toValue(json: BlobBlobJSON): Blob;
  * ```ts
  * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
  *
- * const u8 = toValue({ parts: ["AQID"] });
+ * const u8 = toValue({
+ *   meta: { kind: "buffer" },
+ *   parts: ["AQID"],
+ * });
  * ```
  */
 export function toValue(json: BlobBufferJSON): Uint8Array;
@@ -776,7 +783,10 @@ export function toValue(json: BlobBufferJSON): Uint8Array;
  * ```ts
  * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
  *
- * const u8 = toValue({ parts: ["AQID"] });
+ * const u8 = toValue({
+ *   meta: { kind: "buffer" },
+ *   parts: ["AQID"],
+ * });
  * ```
  */
 export function toValue(json: BlobJSON): Uint8Array | Blob | File;
