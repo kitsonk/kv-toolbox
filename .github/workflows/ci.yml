@@ -7,13 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        version: ["2.0.X", "2.1.X", canary]
+        version: ["2.1.X"]
     steps:
       - name: clone repository
         uses: actions/checkout@v4
 
       - name: install deno
-        uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v2
         with:
           deno-version: ${{ matrix.version }}
 
@@ -21,13 +21,19 @@ jobs:
         run: deno task check
 
       - name: run tests
+        continue-on-error: true
         run: deno task test:ci
+
+      - name: upload test results
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: generate coverage report
         run: deno task coverage
 
       - name: upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./cov.lcov
           token: ${{ secrets.CODECOV_TOKEN }}

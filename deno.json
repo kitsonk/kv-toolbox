@@ -23,7 +23,7 @@
     "check": "deno fmt --check && deno lint && deno check --doc *.ts",
     "coverage": "deno coverage --lcov --output=cov.lcov ./cov",
     "test": "deno test --allow-read --allow-write --unstable-kv --parallel",
-    "test:ci": "deno test --allow-read --allow-write --unstable-kv --coverage=./cov --parallel"
+    "test:ci": "deno test --allow-read --allow-write --unstable-kv --junit-path=junit.xml --coverage=./cov --parallel"
   },
   "lock": false,
   "imports": {
