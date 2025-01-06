@@ -65,12 +65,9 @@
  * @module
  */
 
-import { concat } from "jsr:@std/bytes@~1/concat";
-import {
-  decodeBase64Url,
-  encodeBase64Url,
-} from "jsr:@std/encoding@~1/base64url";
-import { extension } from "jsr:@std/media-types@~1/extension";
+import { concat } from "@std/bytes/concat";
+import { decodeBase64Url, encodeBase64Url } from "@std/encoding/base64url";
+import { extension } from "@std/media-types/extension";
 
 import { batchedAtomic } from "./batched_atomic.ts";
 import {
