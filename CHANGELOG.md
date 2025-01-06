@@ -1,5 +1,11 @@
 # kv-toolbox change log
 
+## Version 0.24.1
+
+- refactor: migrate fully to import maps (030d205)
+- chore: add test result upload to ci (a0abb76)
+- chore: update dependencies (b3699cf)
+
 ## Version 0.24.0
 
 - feat: migrate import/export to `@deno/kv-utils` (aab2420)
