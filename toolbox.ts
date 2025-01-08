@@ -1,6 +1,10 @@
 /**
  * # KV Toolbox
  *
+ * [![jsr.io/@kitsonk/kv-toolbox](https://jsr.io/badges/@kitsonk/kv-toolbox)](https://jsr.io/@kitsonk/kv-toolbox)
+ * [![jsr.io/@kitsonk/kv-toolbox score](https://jsr.io/badges/@kitsonk/kv-toolbox/score)](https://jsr.io/@kitsonk/kv-toolbox)
+ * [![kv-toolbox ci](https://github.com/kitsonk/kv-toolbox/workflows/ci/badge.svg)](https://github.com/kitsonk/kv-toolbox)
+ *
  * Provides a toolbox for interacting with a Deno KV store, including the
  * ability to store values in an encrypted fashion. The main module exports a
  * {@linkcode ToolboxKv} class that augments the Deno KV store with additional
@@ -51,15 +55,17 @@
  * capabilities of the toolbox are provided by additional exports of the
  * library:
  *
- * - [batched_atomic](https://jsr.io/@kitsonk/kv-toolbox/doc/batched_atomic) - Provides a way to perform
- *   atomic operations in batches while working around the limitations of
- *   Deno KV.
- * - [blob](https://jsr.io/@kitsonk/kv-toolbox/doc/blob) - Provides a way to store arbitrarily large binary
- *   data in Deno KV.
- * - [crypto](https://jsr.io/@kitsonk/kv-toolbox/doc/crypto) - Provides a way to encrypt and decrypt data in
- *   Deno KV.
- * - [keys](https://jsr.io/@kitsonk/kv-toolbox/doc/keys) - Provides convenience functions for working with
- *   keys in Deno KV.
+ * - [batched_atomic](https://jsr.io/@kitsonk/kv-toolbox/doc/batched_atomic) -
+ *   Provides a way to perform atomic operations in batches while working around
+ *   the limitations of Deno KV.
+ * - [blob](https://jsr.io/@kitsonk/kv-toolbox/doc/blob) - Provides a way to
+ *   store arbitrarily large binary data in Deno KV.
+ * - [crypto](https://jsr.io/@kitsonk/kv-toolbox/doc/crypto) - Provides a way to
+ *   encrypt and decrypt data in Deno KV.
+ * - [keys](https://jsr.io/@kitsonk/kv-toolbox/doc/keys) - Provides convenience
+ *   functions for working with keys in Deno KV.
+ * - [query](https://jsr.io/@kitsonk/kv-toolbox/doc/query) - Provides a way to
+ *   query/filter values in Deno KV.
  *
  * ## `@deno/kv-utils`
  *

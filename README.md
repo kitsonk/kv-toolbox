@@ -1,5 +1,9 @@
 # kv-toolbox
 
+[![jsr.io/@kitsonk/kv-toolbox](https://jsr.io/badges/@kitsonk/kv-toolbox)](https://jsr.io/@kitsonk/kv-toolbox)
+[![jsr.io/@kitsonk/kv-toolbox score](https://jsr.io/badges/@kitsonk/kv-toolbox/score)](https://jsr.io/@kitsonk/kv-toolbox)
+[![kv-toolbox ci](https://github.com/kitsonk/kv-toolbox/workflows/ci/badge.svg)](https://github.com/kitsonk/kv-toolbox)
+
 A set of tools for working with Deno KV.
 
 ## Toolbox
@@ -268,6 +272,51 @@ This is useful when storing keys and values in a hierarchical/tree view, where
 you are retrieving a list and you want to know all the unique _descendants_ of a
 key (and the count of keys that match that prefix) in order to be able to
 enumerate them or provide information about them.
+
+## Querying
+
+### `query()`
+
+Creates a `Query` instance which can be used to filter a list of entries from a
+store.
+
+### `PropertyPath`
+
+An encapsulation of a property name with multiple parts. For example to
+reference property `c` in the following object:
+
+```ts
+{
+  a: {
+    b: {
+      c: 1;
+    }
+  }
+}
+```
+
+You would create a property path like:
+
+```ts
+import { PropertyPath } from "@kitsonk/kv-toolbox/query";
+
+const propertyPath = new PropertyPath("a", "b", "c");
+```
+
+### `Filter`
+
+The encapsulation of a condition which is used to filter values from a Deno KV
+store. Users should utilize the static methods to create instances of a filter.
+Current static methods are:
+
+- `.and(...filters)` - ensures that all filters passed are `true` to be included
+  in the results.
+- `.or(...filters)` - ensures that any one of the filters passed are `true` to
+  be included in the results.
+- `.value(operation, value)` - validates that value of the entry meets the
+  condition.
+- `.where(property, operations, value)` - validates that a property of the value
+  of the entry meets the condition.
 
 > [!NOTE]
 > Parts of `kv-toolbox` have been contributed to
