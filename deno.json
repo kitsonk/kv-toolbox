@@ -1,12 +1,13 @@
 {
   "name": "@kitsonk/kv-toolbox",
-  "version": "0.24.1",
+  "version": "0.25.0-beta.1",
   "exports": {
     ".": "./toolbox.ts",
     "./batched_atomic": "./batched_atomic.ts",
     "./blob": "./blob.ts",
     "./crypto": "./crypto.ts",
-    "./keys": "./keys.ts"
+    "./keys": "./keys.ts",
+    "./query": "./query.ts"
   },
   "publish": {
     "exclude": [

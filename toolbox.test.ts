@@ -82,6 +82,36 @@ Deno.test({
 });
 
 Deno.test({
+  name: "kvToolbox - .query()",
+  async fn() {
+    const path = await getPath();
+    const kv = await openKvToolbox({ path });
+    const res = await kv.atomic()
+      .set(["a"], "a")
+      .set(["a", "b"], "b")
+      .set(["a", "b", "c"], "c")
+      .set(["a", "d", "f", "g"], "g")
+      .set(["a", "h"], "h")
+      .set(["e"], "e")
+      .commit();
+    assert(res[0].ok);
+
+    const actual = kv.query<string>({ prefix: [] }).value("==", "c").get();
+    const results: Deno.KvEntry<string>[] = [];
+    for await (const entry of actual) {
+      results.push(entry);
+    }
+
+    assertEquals(results.length, 1);
+    assertEquals(results[0].key, ["a", "b", "c"]);
+    assertEquals(results[0].value, "c");
+    kv.close();
+
+    return cleanup();
+  },
+});
+
+Deno.test({
   name: "kvToolbox - open and close with encryption",
   async fn() {
     const path = await getPath();

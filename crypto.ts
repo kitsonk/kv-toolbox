@@ -14,7 +14,7 @@
  * @example
  *
  * ```ts
- * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+ * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
  *
  * const kv = await openCryptoKv(generateKey());
  * const res = await kv.setBlob(
@@ -104,7 +104,7 @@ function importKey(key: string | Uint8Array): Promise<CryptoKey> {
  * @example
  *
  * ```ts
- * import { CryptoKv, generateKey } from "jsr:@kitsonk/kv-toolbox/crypto";
+ * import { CryptoKv, generateKey }from "@kitsonk/kv-toolbox/crypto";
  *
  * const kv = await Deno.openKv();
  * const cryptoKv = new CryptoKv(kv, generateKey());
@@ -298,7 +298,7 @@ export class CryptoKv {
    * @example
    *
    * ```ts
-   * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+   * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
    *
    * const kv = await openCryptoKv(generateKey());
    * const maybeValue = await kv.getBlob(["hello"], { blob: true });
@@ -317,7 +317,7 @@ export class CryptoKv {
    * @example
    *
    * ```ts
-   * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+   * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
    *
    * const kv = await openCryptoKv(generateKey());
    * const maybeValue = await kv.getBlob(["hello"]);
@@ -370,7 +370,7 @@ export class CryptoKv {
    * @example
    *
    * ```ts
-   * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+   * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
    *
    * const kv = await openCryptoKv(generateKey());
    * const value = await kv.getAsBlob(["hello"]);
@@ -400,7 +400,7 @@ export class CryptoKv {
    * @example Retrieve a JSON object from the store
    *
    * ```ts
-   * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+   * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
    *
    * const kv = await openCryptoKv(generateKey());
    * const value = await kv.getAsJSON(["hello"]);
@@ -430,7 +430,7 @@ export class CryptoKv {
    * @example
    *
    * ```ts
-   * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+   * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
    *
    * const kv = await openCryptoKv(generateKey());
    * const meta = await kv.getBlobMeta(["hello"]);
@@ -471,7 +471,7 @@ export class CryptoKv {
    * @example
    *
    * ```ts
-   * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+   * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
    *
    * const kv = await openCryptoKv(generateKey());
    * const res = await kv.setBlob(
@@ -514,7 +514,7 @@ export class CryptoKv {
    * @example
    *
    * ```ts
-   * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+   * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
    *
    * const kv = await openCryptoKv(generateKey());
    * await kv.deleteBlob(["hello"]);
@@ -545,7 +545,7 @@ export class CryptoKv {
  * @example
  *
  * ```ts
- * import { generateKey } from "jsr:@kitsonk/kv-toolbox/crypto";
+ * import { generateKey }from "@kitsonk/kv-toolbox/crypto";
  *
  * const key = generateKey();
  * ```
@@ -580,7 +580,7 @@ export function generateKey(bitLength: 128 | 192 | 256 = 256): string {
  * @example
  *
  * ```ts
- * import { generateKey, openCryptoKv } from "jsr:@kitsonk/kv-toolbox/crypto";
+ * import { generateKey, openCryptoKv }from "@kitsonk/kv-toolbox/crypto";
  *
  * const kv = await openCryptoKv(generateKey());
  * // kv is now an instance of CryptoKv

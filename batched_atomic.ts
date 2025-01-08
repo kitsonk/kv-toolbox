@@ -16,7 +16,7 @@
  * @example
  *
  * ```ts
- * import { batchedAtomic } from "jsr:/@kitsonk/kv-toolbox/batched_atomic";
+ * import { batchedAtomic } from "@kitsonk/kv-toolbox/batched_atomic";
  *
  * const kv = await Deno.openKv();
  * await batchedAtomic(kv)

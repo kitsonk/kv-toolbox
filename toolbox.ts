@@ -23,7 +23,7 @@
  * {@linkcode ToolboxKv} class:
  *
  * ```ts
- * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+ * import { openKvToolbox } from "@kitsonk/kv-toolbox";
  *
  * const kv = await openKvToolbox();
  * ```
@@ -34,7 +34,7 @@
  * in an encryption key:
  *
  * ```ts
- * import { openKvToolbox, generateKey } from "jsr:@kitsonk/kv-toolbox";
+ * import { openKvToolbox, generateKey } from "@kitsonk/kv-toolbox";
  *
  * const kv = await openKvToolbox({ encryptWith: generateKey() });
  * ```
@@ -107,8 +107,10 @@ import {
   uniqueCount,
   type UniqueCountElement,
 } from "./keys.ts";
+import { type Query, query } from "./query.ts";
 
 export { generateKey } from "./crypto.ts";
+export { Filter, PropertyPath } from "./query.ts";
 
 /**
  * A toolbox for interacting with a Deno KV store.
@@ -182,7 +184,7 @@ export class KvToolbox implements Disposable {
    * And you would get the following results when using `uniqueCount()`:
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * console.log(await kv.counts(["a"]));
@@ -208,7 +210,7 @@ export class KvToolbox implements Disposable {
    * @example Deleting a value
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * await kv.delete(["foo"]);
@@ -217,7 +219,7 @@ export class KvToolbox implements Disposable {
    * @example Deleting a blob value
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * await kv.delete(["foo"], { blob: true });
@@ -232,7 +234,7 @@ export class KvToolbox implements Disposable {
    * listener via {@linkcode Deno.Kv.listenQueue}.
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * await kv.enqueue("bar");
@@ -243,7 +245,7 @@ export class KvToolbox implements Disposable {
    * delivery.
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * await kv.enqueue("bar", { delay: 60000 });
@@ -262,7 +264,7 @@ export class KvToolbox implements Disposable {
    * between each retry.
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * await kv.enqueue("bar", {
@@ -344,7 +346,7 @@ export class KvToolbox implements Disposable {
    * @example Getting a value
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const result = await kv.get(["foo"]);
@@ -385,7 +387,7 @@ export class KvToolbox implements Disposable {
    * functionality and would be terribly inefficient in production:
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:/@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    *
@@ -433,7 +435,7 @@ export class KvToolbox implements Disposable {
    * @example Getting a value
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const json = await kv.getAsBlob(["hello"], { json: true });
@@ -465,7 +467,7 @@ export class KvToolbox implements Disposable {
    * @example Getting a value
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const blob = await kv.getAsBlob(["hello"]);
@@ -521,7 +523,7 @@ export class KvToolbox implements Disposable {
    * @example
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const maybeEntry = await kv.getBlob(["hello"], { stream: true });
@@ -559,7 +561,7 @@ export class KvToolbox implements Disposable {
    * @example
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const blob = await kv.getBlob(["hello"], { blob: true });
@@ -590,7 +592,7 @@ export class KvToolbox implements Disposable {
    * @example
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const blob = await kv.getBlob(["hello"]);
@@ -632,7 +634,7 @@ export class KvToolbox implements Disposable {
    * @example Getting multiple values
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const result = await kv.getMany([["foo"], ["baz"]]);
@@ -658,7 +660,7 @@ export class KvToolbox implements Disposable {
    * @example Getting meta data
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const maybeMeta = await kv.getMeta(["hello"]));
@@ -723,7 +725,7 @@ export class KvToolbox implements Disposable {
    * @example Iterating over a list of entries
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const entries = kv.list({ prefix: ["users"] });
@@ -751,7 +753,7 @@ export class KvToolbox implements Disposable {
    * @example Listening for queue values
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * kv.listenQueue(async (msg: unknown) => {
@@ -770,7 +772,7 @@ export class KvToolbox implements Disposable {
    * @example Listing keys
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * console.log(await kv.keys({ prefix: ["hello"] }));
@@ -782,6 +784,73 @@ export class KvToolbox implements Disposable {
     options?: Deno.KvListOptions,
   ): Promise<Deno.KvKey[]> {
     return keys(this.#kv, selector, options);
+  }
+
+  /**
+   * @param selector Query/filter entries from a {@linkcode Deno.Kv} instance.
+   *
+   * The query instance can be used to filter entries based on a set of
+   * conditions. Then the filtered entries can be retrieved using the `.get()`
+   * method, which returns an async iterator that will yield the entries that
+   * match the conditions.
+   *
+   * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+   * with the added ability to filter entries based on the query conditions.
+   *
+   * @example Filtering entries based on a property value
+   *
+   * ```ts
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   * const result = kv.query({ prefix: [] })
+   *   .where("age", "<=", 10)
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * kv.close();
+   * ```
+   *
+   * @example Filtering entries based on a property value using a `PropertyPath`
+   *
+   * ```ts
+   * import { openKvToolbox, PropertyPath } from "@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   * const result = kv.query({ prefix: [] })
+   *   // matches { a: { b: { c: 1 } } }
+   *   .where(new PropertyPath("a", "b", "c"), "==", 1)
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * kv.close();
+   * ```
+   *
+   * @example Filtering entries based on an _or_ condition
+   *
+   * ```ts
+   * import { openKvToolbox, Filter } from "@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   * const result = kv.query({ prefix: [] })
+   *   .where(Filter.or(
+   *     Filter.where("age", "<", 10),
+   *     Filter.where("age", ">", 20),
+   *   ))
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * kv.close();
+   * ```
+   */
+  query<T = unknown>(
+    selector: Deno.KvListSelector,
+    options?: Deno.KvListOptions,
+  ): Query<T> {
+    return query<T>(this.#kv, selector, options);
   }
 
   /**
@@ -798,7 +867,7 @@ export class KvToolbox implements Disposable {
    * @example Setting a value
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    * const kv = await openKvToolbox();
    * await kv.set(["foo"], "bar");
    * ```
@@ -829,7 +898,7 @@ export class KvToolbox implements Disposable {
    * @example Setting a `Uint8Array`
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const blob = new TextEncoder().encode("hello deno!");
@@ -840,7 +909,7 @@ export class KvToolbox implements Disposable {
    * @example Setting a `Blob`
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * const blob = new Blob(
@@ -886,7 +955,7 @@ export class KvToolbox implements Disposable {
    * And you would get the following results when using `tree()`:
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * console.log(await kv.tree(["a"]));
@@ -934,7 +1003,7 @@ export class KvToolbox implements Disposable {
    * The following results when using `unique()`:
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    * console.log(await kv.unique(["a"]));
@@ -978,7 +1047,7 @@ export class KvToolbox implements Disposable {
    * @example Watching for changes
    *
    * ```ts
-   * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox();
    *
@@ -1049,7 +1118,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * @example
    *
    * ```ts
-   * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { generateKey, openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
    * const maybeEntry = await kv.getBlob(["hello"], { stream: true });
@@ -1093,7 +1162,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * @example Retrieving an encrypted blob
    *
    * ```ts
-   * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { generateKey, openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
    * const blob = await kv.getBlob(["hello"], { blob: true });
@@ -1133,7 +1202,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * @example Retrieving an encrypted blob
    *
    * ```ts
-   * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { generateKey, openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
    * const blob = await kv.getBlob(["hello"]);
@@ -1198,7 +1267,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * functionality and would be terribly inefficient in production:
    *
    * ```ts
-   * import { generateKey, openKvToolbox } from "jsr:/@kitsonk/kv-toolbox";
+   * import { generateKey, openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
    *
@@ -1237,7 +1306,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * @example Retrieving an encrypted blob as JSON
    *
    * ```ts
-   * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { generateKey, openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
    * const value = await kv.getAsBlob(["hello"], { json: true });
@@ -1274,7 +1343,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * @example Retrieving an encrypted blob
    *
    * ```ts
-   * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { generateKey, openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
    * const value = await kv.getAsBlob(["hello"]);
@@ -1328,7 +1397,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * @example
    *
    * ```ts
-   * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { generateKey, openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
    * const meta = await kv.getMeta(["hello"]);
@@ -1373,7 +1442,7 @@ export class CryptoKvToolbox extends KvToolbox {
    * @example Storing an encrypted blob
    *
    * ```ts
-   * import { generateKey, openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+   * import { generateKey, openKvToolbox } from "@kitsonk/kv-toolbox";
    *
    * const kv = await openKvToolbox({ encryptWith: generateKey() });
    * const res = await kv.setBlob(
@@ -1423,7 +1492,7 @@ export class CryptoKvToolbox extends KvToolbox {
  * @example Opening a toolbox
  *
  * ```ts
- * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+ * import { openKvToolbox } from "@kitsonk/kv-toolbox";
  *
  * const kv = await openKvToolbox();
  * await kv.set(["hello"], "world");
@@ -1446,7 +1515,7 @@ export function openKvToolbox(
  * @example Opening a toolbox
  *
  * ```ts
- * import { openKvToolbox } from "jsr:@kitsonk/kv-toolbox";
+ * import { openKvToolbox } from "@kitsonk/kv-toolbox";
  *
  * const kv = await openKvToolbox();
  * await kv.set(["hello"], "world");

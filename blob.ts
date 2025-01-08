@@ -488,7 +488,7 @@ export interface GetAsResponseOptions {
  * functionality and would be terribly inefficient in production:
  *
  * ```ts
- * import { getAsResponse } from "jsr:/@kitsonk/kv-toolbox/blob";
+ * import { getAsResponse } from "@kitsonk/kv-toolbox/blob";
  *
  * const kv = await Deno.openKv();
  *
@@ -658,7 +658,7 @@ export function toBlob(value: string, type = "text/plain"): Blob {
  * @example Convert a `Uint8Array` to JSON
  *
  * ```ts
- * import { toJSON } from "jsr:/@kitsonk/kv-toolbox/blob";
+ * import { toJSON } from "@kitsonk/kv-toolbox/blob";
  *
  * const u8 = new Uint8Array();
  * const json = JSON.stringify(toJSON(u8));
@@ -672,7 +672,7 @@ export async function toJSON(blob: File): Promise<BlobFileJSON>;
  * @example Convert a `Uint8Array` to JSON
  *
  * ```ts
- * import { toJSON } from "jsr:/@kitsonk/kv-toolbox/blob";
+ * import { toJSON } from "@kitsonk/kv-toolbox/blob";
  *
  * const u8 = new Uint8Array();
  * const json = JSON.stringify(toJSON(u8));
@@ -686,7 +686,7 @@ export async function toJSON(blob: Blob): Promise<BlobBlobJSON>;
  * @example Convert a `Uint8Array` to JSON
  *
  * ```ts
- * import { toJSON } from "jsr:/@kitsonk/kv-toolbox/blob";
+ * import { toJSON } from "@kitsonk/kv-toolbox/blob";
  *
  * const u8 = new Uint8Array();
  * const json = JSON.stringify(toJSON(u8));
@@ -723,7 +723,7 @@ export async function toJSON(
  * @example Convert some JSON to a File
  *
  * ```ts
- * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
+ * import { toValue } from "@kitsonk/kv-toolbox/blob";
  *
  * const file = toValue({
  *   meta: {
@@ -743,7 +743,7 @@ export function toValue(json: BlobFileJSON): File;
  * @example Convert some JSON to a File
  *
  * ```ts
- * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
+ * import { toValue } from "@kitsonk/kv-toolbox/blob";
  *
  * const blob = toValue({
  *   meta: {
@@ -762,7 +762,7 @@ export function toValue(json: BlobBlobJSON): Blob;
  * @example Convert some JSON to a File
  *
  * ```ts
- * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
+ * import { toValue } from "@kitsonk/kv-toolbox/blob";
  *
  * const u8 = toValue({
  *   meta: { kind: "buffer" },
@@ -778,7 +778,7 @@ export function toValue(json: BlobBufferJSON): Uint8Array;
  * @example Convert some JSON to a File
  *
  * ```ts
- * import { toValue } from "jsr:/@kitsonk/kv-toolbox/blob";
+ * import { toValue } from "@kitsonk/kv-toolbox/blob";
  *
  * const u8 = toValue({
  *   meta: { kind: "buffer" },
