@@ -1,5 +1,11 @@
 # kv-toolbox change log
 
+## Version 0.25.0
+
+- feat: add query module (fb3fa44)
+- feat: add matches op to query (2e23829)
+- docs: improve query docs (0f1bce7)
+
 ## Version 0.24.1
 
 - refactor: migrate fully to import maps (030d205)
