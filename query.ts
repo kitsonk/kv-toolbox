@@ -22,6 +22,7 @@ import { assert } from "@std/assert/assert";
  * - `"array-contains-any"` - array contains any of the values
  * - `"in"` - value is in the array of supplied values
  * - `"not-in"` - value is not in the array of supplied values
+ * - `"matches"` - value matches the regular expression
  */
 export type Operation =
   | "<"
@@ -33,7 +34,8 @@ export type Operation =
   | "array-contains"
   | "array-contains-any"
   | "in"
-  | "not-in";
+  | "not-in"
+  | "matches";
 
 type Mappable = Record<string, unknown> | Map<string, unknown>;
 
@@ -148,6 +150,11 @@ function exec(other: any, operation: Operation, value: any | any[]): boolean {
     case "not-in":
       if (Array.isArray(value)) {
         return !value.some((v) => equal(other, v));
+      }
+      break;
+    case "matches":
+      if (typeof other === "string" && value instanceof RegExp) {
+        return value.test(other);
       }
       break;
   }
@@ -311,6 +318,22 @@ export class Filter implements FilterLike {
    * assert(!filter.test(11));
    * ```
    */
+  static value(operation: "matches", value: RegExp): Filter;
+  /**
+   * Create a filter which will return `true` if the value matches the
+   * operation and value.
+   *
+   * @example
+   *
+   * ```ts
+   * import { Filter } from "@kitsonk/kv-toolbox/query";
+   * import { assert } from "@std/assert/assert";
+   *
+   * const filter = Filter.value("==", 10);
+   * assert(filter.test(10));
+   * assert(!filter.test(11));
+   * ```
+   */
   static value(
     operation: "in" | "not-in" | "array-contains-any",
     value: unknown[],
@@ -335,6 +358,26 @@ export class Filter implements FilterLike {
     return new Filter((other) => exec(other, operation, value));
   }
 
+  /**
+   * Create a filter which will return `true` if the value of the property
+   * matches the operation and value.
+   *
+   * @example
+   *
+   * ```ts
+   * import { Filter } from "@kitsonk/kv-toolbox/query";
+   * import { assert } from "@std/assert/assert";
+   *
+   * const filter = Filter.where("age", "<=", 10);
+   * assert(filter.test({ age: 10 }));
+   * assert(!filter.test({ age: 11 }));
+   * ```
+   */
+  static where(
+    property: string | PropertyPath,
+    operation: "matches",
+    value: RegExp,
+  ): Filter;
   /**
    * Create a filter which will return `true` if the value of the property
    * matches the operation and value.
@@ -479,6 +522,26 @@ export class Query<T = unknown> {
    * db.close();
    * ```
    */
+  value(operation: "matches", value: RegExp): this;
+  /**
+   * Add a filter to the query where the value of the entry matches the
+   * operation and value.
+   *
+   * @example
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const db = await Deno.openKv();
+   * const result = query(db, { prefix: [] })
+   *   .value("==", { age: 10 })
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * db.close();
+   * ```
+   */
   value(
     operation: "in" | "not-in" | "array-contains-any",
     value: unknown[],
@@ -531,6 +594,30 @@ export class Query<T = unknown> {
    * ```
    */
   where(filter: FilterLike): this;
+  /**
+   * Add a property filter to the query. Only entries which values match the
+   * filter will be returned.
+   *
+   * @example
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const db = await Deno.openKv();
+   * const result = query(db, { prefix: [] })
+   *   .where("age", "<=", 10)
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * db.close();
+   * ```
+   */
+  where(
+    property: string | PropertyPath,
+    operation: "matches",
+    value: RegExp,
+  ): this;
   /**
    * Add a property filter to the query. Only entries which values match the
    * filter will be returned.

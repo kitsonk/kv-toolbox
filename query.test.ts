@@ -115,6 +115,13 @@ Deno.test("Filter.where() - not in", () => {
   assert(filter.test({ age: 30 }));
 });
 
+Deno.test("Filter.where() - matches", () => {
+  const filter = Filter.where("name", "matches", /^test/);
+  assert(filter.test({ name: "test" }));
+  assert(filter.test({ name: "test2" }));
+  assert(!filter.test({ name: " test" }));
+});
+
 Deno.test("Filter.where() - PropertyPath", () => {
   const filter = Filter.where(new PropertyPath("a", "b", "c"), "==", 1);
   assert(filter.test({ a: { b: { c: 1 } } }));
