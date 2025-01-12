@@ -1,5 +1,6 @@
 import { assert, assertEquals, setup, teardown } from "./_test_util.ts";
 import { batchedAtomic } from "./batched_atomic.ts";
+import { Filter, query } from "./query.ts";
 
 import {
   equals,
@@ -31,6 +32,28 @@ Deno.test({
 });
 
 Deno.test({
+  name: "keys - returns a list of keys from query",
+  async fn() {
+    const kv = await setup();
+    const res = await kv.atomic()
+      .set(["a"], "a")
+      .set(["a", "b"], "b")
+      .set(["a", "b", "c"], "c")
+      .set(["d"], "d")
+      .commit();
+    assert(res.ok);
+
+    const actual = await keys(
+      query(kv, { prefix: ["a"] })
+        .value("==", "b"),
+    );
+
+    assertEquals(actual, [["a", "b"]]);
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "unique - returns a list of unique sub-keys",
   async fn() {
     const kv = await setup();
@@ -45,6 +68,33 @@ Deno.test({
 
     const actual = await unique(kv, ["a"]);
 
+    assertEquals(actual, [["a", "b"], ["a", "d"]]);
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "unique - returns a list of unique sub-keys from query",
+  async fn() {
+    const kv = await setup();
+    const res = await kv.atomic()
+      .set(["a"], "a")
+      .set(["a", "b"], "b")
+      .set(["a", "b", "c"], "c")
+      .set(["a", "d", "f", "g"], "g")
+      .set(["e"], "e")
+      .commit();
+    assert(res.ok);
+
+    const actual = await unique(
+      query(kv, { prefix: ["a"] }).where(
+        Filter.or(
+          Filter.value("==", "b"),
+          Filter.value("==", "c"),
+          Filter.value("==", "g"),
+        ),
+      ),
+    );
     assertEquals(actual, [["a", "b"], ["a", "d"]]);
     return teardown();
   },
@@ -88,6 +138,40 @@ Deno.test({
     assert(res.ok);
 
     const actual = await uniqueCount(kv, ["a"]);
+
+    assertEquals(actual, [
+      { key: ["a", "b"], count: 1 },
+      { key: ["a", "d"], count: 1 },
+      { key: ["a", "h"], count: 0 },
+    ]);
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "uniqueCount - returns a list of unique sub-keys from query",
+  async fn() {
+    const kv = await setup();
+    const res = await kv.atomic()
+      .set(["a"], "a")
+      .set(["a", "b"], "b")
+      .set(["a", "b", "c"], "c")
+      .set(["a", "d", "f", "g"], "g")
+      .set(["a", "h"], "h")
+      .set(["e"], "e")
+      .commit();
+    assert(res.ok);
+
+    const actual = await uniqueCount(
+      query(kv, { prefix: ["a"] }).where(
+        Filter.or(
+          Filter.value("==", "b"),
+          Filter.value("==", "c"),
+          Filter.value("==", "g"),
+          Filter.value("==", "h"),
+        ),
+      ),
+    );
 
     assertEquals(actual, [
       { key: ["a", "b"], count: 1 },
@@ -288,6 +372,62 @@ Deno.test({
     assert(res.ok);
 
     const actual = await tree(kv);
+
+    assertEquals(actual, {
+      children: [
+        {
+          part: "a",
+          hasValue: true,
+          children: [
+            {
+              part: "b",
+              hasValue: true,
+              children: [{ part: "c", hasValue: true }],
+            },
+            {
+              part: "d",
+              children: [{
+                part: "f",
+                children: [{ part: "g", hasValue: true }],
+              }],
+            },
+            { part: "h", hasValue: true },
+          ],
+        },
+        { part: "e", hasValue: true },
+      ],
+    });
+
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "tree - returns a correct tree structure from query",
+  async fn() {
+    const kv = await setup();
+    const res = await kv.atomic()
+      .set(["a"], "a")
+      .set(["a", "b"], "b")
+      .set(["a", "b", "c"], "c")
+      .set(["a", "d", "f", "g"], "g")
+      .set(["a", "h"], "h")
+      .set(["e"], "e")
+      .commit();
+    assert(res.ok);
+
+    const actual = await tree(
+      query(kv, { prefix: [] }).where(
+        Filter.or(
+          Filter.value("==", "a"),
+          Filter.value("==", "b"),
+          Filter.value("==", "c"),
+          Filter.value("==", "g"),
+          Filter.value("==", "h"),
+          Filter.value("==", "e"),
+        ),
+      ),
+    );
 
     assertEquals(actual, {
       children: [

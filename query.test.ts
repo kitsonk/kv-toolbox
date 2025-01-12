@@ -184,3 +184,94 @@ Deno.test("query() - where - equals", async () => {
   assertEquals(entries[0].value, { age: 10 });
   db.close();
 });
+
+Deno.test("query() - keys", async () => {
+  const db = await Deno.openKv(":memory:");
+  await db
+    .atomic()
+    .set(["a"], { age: 10 })
+    .set(["b"], { age: 20 })
+    .set(["c"], { age: 30 })
+    .commit();
+  const result = await query(db, { prefix: [] })
+    .where("age", ">", 10)
+    .keys();
+  assertEquals(result, [["b"], ["c"]]);
+  db.close();
+});
+
+Deno.test("query() - unique", async () => {
+  const db = await Deno.openKv(":memory:");
+  await db
+    .atomic()
+    .set(["a", "b"], { age: 10 })
+    .set(["a", "b", "c"], { age: 10 })
+    .set(["a", "d", "e"], { age: 10 })
+    .set(["a", "d", "f"], { age: 10 })
+    .set(["a", "g"], { age: 20 })
+    .commit();
+  const result = await query(db, { prefix: ["a"] })
+    .where("age", "==", 10)
+    .unique();
+  assertEquals(result, [["a", "b"], ["a", "d"]]);
+  db.close();
+});
+
+Deno.test("query() - counts", async () => {
+  const db = await Deno.openKv(":memory:");
+  await db
+    .atomic()
+    .set(["a", "b"], { age: 10 })
+    .set(["a", "b", "c"], { age: 10 })
+    .set(["a", "d", "e"], { age: 10 })
+    .set(["a", "d", "f"], { age: 10 })
+    .set(["a", "g"], { age: 20 })
+    .commit();
+  const result = await query(db, { prefix: ["a"] })
+    .where("age", "==", 10)
+    .counts();
+  assertEquals(result, [
+    { key: ["a", "b"], count: 1 },
+    { key: ["a", "d"], count: 2 },
+  ]);
+  db.close();
+});
+
+Deno.test("query() - tree", async () => {
+  const db = await Deno.openKv(":memory:");
+  await db
+    .atomic()
+    .set(["a", "b"], { age: 10 })
+    .set(["a", "b", "c"], { age: 10 })
+    .set(["a", "d", "e"], { age: 10 })
+    .set(["a", "d", "f"], { age: 10 })
+    .set(["a", "g"], { age: 20 })
+    .set(["b", "h"], { age: 10 })
+    .commit();
+  const result = await query(db, { prefix: [] })
+    .where("age", "==", 10)
+    .tree();
+  assertEquals(result, {
+    children: [
+      {
+        part: "a",
+        children: [
+          {
+            part: "b",
+            hasValue: true,
+            children: [{ part: "c", hasValue: true }],
+          },
+          {
+            part: "d",
+            children: [
+              { part: "e", hasValue: true },
+              { part: "f", hasValue: true },
+            ],
+          },
+        ],
+      },
+      { part: "b", children: [{ part: "h", hasValue: true }] },
+    ],
+  });
+  db.close();
+});

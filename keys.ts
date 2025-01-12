@@ -147,6 +147,7 @@
 import { timingSafeEqual } from "@std/crypto/timing-safe-equal";
 
 import { BLOB_KEY, BLOB_META_KEY } from "./blob_util.ts";
+import type { QueryLike } from "./query.ts";
 
 function addIfUnique(set: Set<Deno.KvKeyPart>, item: Uint8Array) {
   for (const i of set) {
@@ -264,7 +265,25 @@ export function startsWith(key: Deno.KvKey, prefix: Deno.KvKey): boolean {
   return equals(prefix, key.slice(0, prefix.length));
 }
 
-/** Return an array of keys that match the `selector` in the target `kv`
+/**
+ * Return an array of keys that match the `query`.
+ *
+ * @example
+ *
+ * ```ts
+ * import { keys } from "@kitsonk/kv-toolbox/keys";
+ * import { query } from "@kitsonk/kv-toolbox/query";
+ *
+ * const kv = await Deno.openKv();
+ * const q = query(kv, { prefix: ["hello"] })
+ *   .where("name", "==", "world");
+ * console.log(await keys(q));
+ * await kv.close();
+ * ```
+ */
+export async function keys(query: QueryLike): Promise<Deno.KvKey[]>;
+/**
+ * Return an array of keys that match the `selector` in the target `kv`
  * store.
  *
  * @example
@@ -281,8 +300,15 @@ export async function keys(
   kv: Deno.Kv,
   selector: Deno.KvListSelector,
   options?: Deno.KvListOptions,
+): Promise<Deno.KvKey[]>;
+export async function keys(
+  queryOrKv: Deno.Kv | QueryLike,
+  selector?: Deno.KvListSelector,
+  options?: Deno.KvListOptions,
 ): Promise<Deno.KvKey[]> {
-  const list = kv.list(selector, options);
+  const list = queryOrKv instanceof Deno.Kv
+    ? queryOrKv.list(selector!, options)
+    : queryOrKv.get();
   const keys: Deno.KvKey[] = [];
   for await (const { key } of list) {
     keys.push(key);
@@ -290,7 +316,46 @@ export async function keys(
   return keys;
 }
 
-/** Resolves with an array of unique sub keys/prefixes for the provided prefix.
+/**
+ * Resolves with an array of unique sub keys/prefixes for the provided query.
+ *
+ * This is useful when storing keys and values in a hierarchical/tree view,
+ * where you are retrieving a list and you want to know all the unique
+ * _descendants_ of a key in order to be able to enumerate them.
+ *
+ * @example
+ *
+ * The following keys stored in a datastore:
+ *
+ * ```
+ * ["a", "b"]
+ * ["a", "b", "c"]
+ * ["a", "d", "e"]
+ * ["a", "d", "f"]
+ * ```
+ *
+ * The following results when using `unique()`:
+ *
+ * ```ts
+ * import { unique } from "@kitsonk/kv-toolbox/keys";
+ * import { query } from "@kitsonk/kv-toolbox/query";
+ *
+ * const kv = await Deno.openKv();
+ * const q = query(kv, { prefix: ["a"] })
+ *   .where("name", "==", "world");
+ * console.log(await unique(q));
+ * // ["a", "b"]
+ * // ["a", "d"]
+ * await kv.close();
+ * ```
+ *
+ * If you omit a `prefix`, all unique root keys are resolved.
+ */
+export async function unique(
+  query: QueryLike,
+): Promise<Deno.KvKey[]>;
+/**
+ * Resolves with an array of unique sub keys/prefixes for the provided prefix.
  *
  * This is useful when storing keys and values in a hierarchical/tree view,
  * where you are retrieving a list and you want to know all the unique
@@ -323,10 +388,20 @@ export async function keys(
  */
 export async function unique(
   kv: Deno.Kv,
+  prefix?: Deno.KvKey,
+  options?: Deno.KvListOptions,
+): Promise<Deno.KvKey[]>;
+export async function unique(
+  queryOrKv: Deno.Kv | QueryLike,
   prefix: Deno.KvKey = [],
   options?: Deno.KvListOptions,
 ): Promise<Deno.KvKey[]> {
-  const list = kv.list({ prefix }, options);
+  prefix = queryOrKv instanceof Deno.Kv
+    ? prefix
+    : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
+  const list = queryOrKv instanceof Deno.Kv
+    ? queryOrKv.list({ prefix }, options)
+    : queryOrKv.get();
   const prefixLength = prefix.length;
   const prefixes = new Set<Deno.KvKeyPart>();
   for await (const { key } of list) {
@@ -383,6 +458,47 @@ export interface UniqueCountElement {
  *
  * ```ts
  * import { uniqueCount } from "@kitsonk/kv-toolbox/keys";
+ * import { query } from "@kitsonk/kv-toolbox/query";
+ *
+ * const kv = await Deno.openKv();
+ * const q = query(kv, { prefix: ["a"] })
+ *   .where("name", "==", "world");
+ * console.log(await uniqueCount(q));
+ * // { key: ["a", "b"], count: 1 }
+ * // { key: ["a", "d"], count: 2 }
+ * await kv.close();
+ * ```
+ */
+export async function uniqueCount(
+  query: QueryLike,
+): Promise<UniqueCountElement[]>;
+/**
+ * Resolves with an array of unique sub keys/prefixes for the provided prefix
+ * along with the number of sub keys that match that prefix. The `count`
+ * represents the number of sub keys, a value of `0` indicates that only the
+ * exact key exists with no sub keys.
+ *
+ * This is useful when storing keys and values in a hierarchical/tree view,
+ * where you are retrieving a list including counts and you want to know all the
+ * unique _descendants_ of a key in order to be able to enumerate them.
+ *
+ * If you omit a `prefix`, all unique root keys are resolved.
+ *
+ * @example
+ *
+ * If you had the following keys stored in a datastore:
+ *
+ * ```
+ * ["a", "b"]
+ * ["a", "b", "c"]
+ * ["a", "d", "e"]
+ * ["a", "d", "f"]
+ * ```
+ *
+ * And you would get the following results when using `uniqueCount()`:
+ *
+ * ```ts
+ * import { uniqueCount } from "@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
  * console.log(await uniqueCount(kv, ["a"]));
@@ -393,10 +509,20 @@ export interface UniqueCountElement {
  */
 export async function uniqueCount(
   kv: Deno.Kv,
+  prefix?: Deno.KvKey,
+  options?: Deno.KvListOptions,
+): Promise<UniqueCountElement[]>;
+export async function uniqueCount(
+  queryOrKv: Deno.Kv | QueryLike,
   prefix: Deno.KvKey = [],
   options?: Deno.KvListOptions,
 ): Promise<UniqueCountElement[]> {
-  const list = kv.list({ prefix }, options);
+  prefix = queryOrKv instanceof Deno.Kv
+    ? prefix
+    : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
+  const list = queryOrKv instanceof Deno.Kv
+    ? queryOrKv.list({ prefix }, options)
+    : queryOrKv.get();
   const prefixLength = prefix.length;
   const prefixCounts = new Map<
     Deno.KvKeyPart,
@@ -456,7 +582,8 @@ export interface KeyTree {
   children?: KeyTreeNode[];
 }
 
-/** Query a Deno KV store for keys and resolve with any matching keys
+/**
+ * Query a Deno KV store for keys and resolve with any matching keys
  * organized into a tree structure.
  *
  * The root of the tree will be either the root of Deno KV store or if a prefix
@@ -477,7 +604,56 @@ export interface KeyTree {
  * And you would get the following results when using `tree()`:
  *
  * ```ts
- * import { unique } from "@kitsonk/kv-toolbox/keys";
+ * import { tree } from "@kitsonk/kv-toolbox/keys";
+ * import { query } from "@kitsonk/kv-toolbox/query";
+ *
+ * const kv = await Deno.openKv();
+ * const q = query(kv, { prefix: ["a"] })
+ *   .where("name", "==", "world");
+ * console.log(await tree(q));
+ * // {
+ * //   prefix: ["a"],
+ * //   children: [
+ * //     {
+ * //       part: "b",
+ * //       hasValue: true,
+ * //       children: [{ part: "c", hasValue: true }]
+ * //     }, {
+ * //       part: "d",
+ * //       children: [
+ * //         { part: "e", hasValue: true },
+ * //         { part: "f", hasValue: true }
+ * //       ]
+ * //     }
+ * //   ]
+ * // }
+ * await kv.close();
+ * ```
+ */
+export async function tree(query: QueryLike): Promise<KeyTree>;
+/**
+ * Query a Deno KV store for keys and resolve with any matching keys
+ * organized into a tree structure.
+ *
+ * The root of the tree will be either the root of Deno KV store or if a prefix
+ * is supplied, keys that match the prefix. Each child node indicates if it
+ * also has a value and any children of that node.
+ *
+ * @example
+ *
+ * If you had the following keys stored in a datastore:
+ *
+ * ```
+ * ["a", "b"]
+ * ["a", "b", "c"]
+ * ["a", "d", "e"]
+ * ["a", "d", "f"]
+ * ```
+ *
+ * And you would get the following results when using `tree()`:
+ *
+ * ```ts
+ * import { tree } from "@kitsonk/kv-toolbox/keys";
  *
  * const kv = await Deno.openKv();
  * console.log(await tree(kv, ["a"]));
@@ -502,12 +678,22 @@ export interface KeyTree {
  */
 export async function tree(
   kv: Deno.Kv,
+  prefix?: Deno.KvKey,
+  options?: Deno.KvListOptions,
+): Promise<KeyTree>;
+export async function tree(
+  queryOrKv: Deno.Kv | QueryLike,
   prefix: Deno.KvKey = [],
   options?: Deno.KvListOptions,
 ): Promise<KeyTree> {
+  prefix = queryOrKv instanceof Deno.Kv
+    ? prefix
+    : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
   const root: KeyTree = prefix.length ? { prefix: [...prefix] } : {};
   const prefixLength = prefix.length;
-  const list = kv.list({ prefix }, options);
+  const list = queryOrKv instanceof Deno.Kv
+    ? queryOrKv.list({ prefix }, options)
+    : queryOrKv.get();
   for await (const { key } of list) {
     if (!root.children) {
       root.children = [];

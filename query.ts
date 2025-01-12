@@ -7,6 +7,15 @@
 import { equal } from "@std/assert/equal";
 import { assert } from "@std/assert/assert";
 
+import {
+  keys,
+  type KeyTree,
+  tree,
+  unique,
+  uniqueCount,
+  type UniqueCountElement,
+} from "./keys.ts";
+
 /**
  * The supported operations for filtering entries.
  *
@@ -39,6 +48,21 @@ export type Operation =
 
 type Mappable = Record<string, unknown> | Map<string, unknown>;
 
+/**
+ * The interface which is used by {@linkcode query} to filter entries. As long
+ * as the object implements the `.test()` method, it can be used as a filter.
+ * It will be passed the value of the entry and should return `true` if the
+ * entry should be included in the results.
+ */
+export interface FilterLike {
+  test(value: unknown): boolean;
+}
+
+export interface QueryLike<T = unknown> {
+  readonly selector: Deno.KvListSelector;
+  get(): Deno.KvListIterator<T>;
+}
+
 function getValue(obj: Mappable, key: string): unknown {
   if (obj instanceof Map) {
     return obj.get(key);
@@ -55,6 +79,11 @@ function hasProperty(obj: Mappable, key: string): boolean {
 
 function isMappable(value: unknown): value is Mappable {
   return typeof value === "object" && value !== null;
+}
+
+function isFilterLike(value: unknown): value is FilterLike {
+  return typeof value === "object" && value !== null && "test" in value &&
+    typeof value.test === "function";
 }
 
 /**
@@ -159,21 +188,6 @@ function exec(other: any, operation: Operation, value: any | any[]): boolean {
       break;
   }
   return false;
-}
-
-/**
- * The interface which is used by {@linkcode query} to filter entries. As long
- * as the object implements the `.test()` method, it can be used as a filter.
- * It will be passed the value of the entry and should return `true` if the
- * entry should be included in the results.
- */
-export interface FilterLike {
-  test(value: unknown): boolean;
-}
-
-function isFilterLike(value: unknown): value is FilterLike {
-  return typeof value === "object" && value !== null && "test" in value &&
-    typeof value.test === "function";
 }
 
 /**
@@ -477,11 +491,18 @@ class QueryListIterator<T = unknown> extends AsyncIterator
 /**
  * Query instance for filtering entries from a {@linkcode Deno.Kv} instance.
  */
-export class Query<T = unknown> {
+export class Query<T = unknown> implements QueryLike<T> {
   #kv: Deno.Kv;
   #selector: Deno.KvListSelector;
   #options: Deno.KvListOptions;
   #query: FilterLike[] = [];
+
+  /**
+   * The selector that is used to query the entries.
+   */
+  get selector(): Deno.KvListSelector {
+    return { ...this.#selector };
+  }
 
   constructor(
     kv: Deno.Kv,
@@ -494,6 +515,44 @@ export class Query<T = unknown> {
   }
 
   /**
+   * Resolves with an array of unique sub keys/prefixes for the provided prefix
+   * along with the number of sub keys that match that prefix. The `count`
+   * represents the number of sub keys, a value of `0` indicates that only the
+   * exact key exists with no sub keys.
+   *
+   * This is useful when storing keys and values in a hierarchical/tree view,
+   * where you are retrieving a list including counts and you want to know all
+   * the unique _descendants_ of a key in order to be able to enumerate them.
+   *
+   * @example
+   *
+   * If you had the following keys stored in a datastore and the query matched
+   * the keys:
+   *
+   * ```
+   * ["a", "b"]
+   * ["a", "b", "c"]
+   * ["a", "d", "e"]
+   * ["a", "d", "f"]
+   * ```
+   *
+   * And you would get the following results when using `.counts()`:
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const kv = await Deno.openKv();
+   * console.log(await query(kv, ["a"]).counts());
+   * // { key: ["a", "b"], count: 1 }
+   * // { key: ["a", "d"], count: 2 }
+   * await kv.close();
+   * ```
+   */
+  counts(): Promise<UniqueCountElement[]> {
+    return uniqueCount(this);
+  }
+
+  /**
    * Get the entries that match the query conditions.
    */
   get(): Deno.KvListIterator<T> {
@@ -501,6 +560,106 @@ export class Query<T = unknown> {
       this.#kv.list<T>(this.#selector, this.#options),
       this.#query,
     );
+  }
+
+  /**
+   * Return an array of keys that match the query.
+   *
+   * @example
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const kv = await Deno.openKv();
+   * console.log(await query(kv, { prefix: ["hello"] }).keys());
+   * await kv.close();
+   * ```
+   */
+  keys(): Promise<Deno.KvKey[]> {
+    return keys(this);
+  }
+
+  /**
+   * Query a Deno KV store for keys and resolve with any matching keys
+   * organized into a tree structure.
+   *
+   * Each child node indicates if it also has a value and any children of that
+   * node.
+   *
+   * @example
+   *
+   * If you had the following keys stored in a datastore and the query matched
+   * the values of all the entries:
+   *
+   * ```
+   * ["a", "b"]
+   * ["a", "b", "c"]
+   * ["a", "d", "e"]
+   * ["a", "d", "f"]
+   * ```
+   *
+   * And you would get the following results when using `.tree()`:
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const kv = await Deno.openKv();
+   * console.log(await query(kv, ["a"]).tree());
+   * // {
+   * //   prefix: ["a"],
+   * //   children: [
+   * //     {
+   * //       part: "b",
+   * //       hasValue: true,
+   * //       children: [{ part: "c", hasValue: true }]
+   * //     }, {
+   * //       part: "d",
+   * //       children: [
+   * //         { part: "e", hasValue: true },
+   * //         { part: "f", hasValue: true }
+   * //       ]
+   * //     }
+   * //   ]
+   * // }
+   * await kv.close();
+   * ```
+   */
+  tree(): Promise<KeyTree> {
+    return tree(this);
+  }
+
+  /**
+   * Resolves with an array of unique sub keys/prefixes for the matched query.
+   *
+   * This is useful when storing keys and values in a hierarchical/tree view,
+   * where you are retrieving a list and you want to know all the unique
+   * _descendants_ of a key in order to be able to enumerate them.
+   *
+   * @example
+   *
+   * The following keys stored in a datastore that matched the query:
+   *
+   * ```
+   * ["a", "b"]
+   * ["a", "b", "c"]
+   * ["a", "d", "e"]
+   * ["a", "d", "f"]
+   * ```
+   *
+   * The following results when using `.unique()`:
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const kv = await Deno.openKv();
+   * console.log(await query(kv, ["a"]).unique());
+   * // ["a", "b"]
+   * // ["a", "d"]
+   * await kv.close();
+   * ```
+   */
+  unique(): Promise<Deno.KvKey[]> {
+    return unique(this);
   }
 
   /**
