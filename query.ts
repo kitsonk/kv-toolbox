@@ -542,7 +542,7 @@ export class Query<T = unknown> implements QueryLike<T> {
    * import { query } from "@kitsonk/kv-toolbox/query";
    *
    * const kv = await Deno.openKv();
-   * console.log(await query(kv, ["a"]).counts());
+   * console.log(await query(kv, { prefix: ["a"] }).counts());
    * // { key: ["a", "b"], count: 1 }
    * // { key: ["a", "d"], count: 2 }
    * await kv.close();
@@ -604,7 +604,7 @@ export class Query<T = unknown> implements QueryLike<T> {
    * import { query } from "@kitsonk/kv-toolbox/query";
    *
    * const kv = await Deno.openKv();
-   * console.log(await query(kv, ["a"]).tree());
+   * console.log(await query(kv, { prefix: ["a"] }).tree());
    * // {
    * //   prefix: ["a"],
    * //   children: [
@@ -652,7 +652,7 @@ export class Query<T = unknown> implements QueryLike<T> {
    * import { query } from "@kitsonk/kv-toolbox/query";
    *
    * const kv = await Deno.openKv();
-   * console.log(await query(kv, ["a"]).unique());
+   * console.log(await query(kv, { prefix: ["a"] }).unique());
    * // ["a", "b"]
    * // ["a", "d"]
    * await kv.close();
