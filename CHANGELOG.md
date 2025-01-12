@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.26.0
+
+- feat: integrate keys and query (8b6eabd)
+
 ## Version 0.25.0
 
 - feat: add query module (fb3fa44)
