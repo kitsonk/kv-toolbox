@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.27.1
+
+- feat: add db property to toolbox (5666c95)
+
 ## Version 0.27.0
 
 - feat: add JSON serialization to query (23da00b)
