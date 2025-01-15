@@ -1,5 +1,10 @@
 # kv-toolbox change log
 
+## Version 0.27.0
+
+- feat: add JSON serialization to query (23da00b)
+- docs: fixup inline query examples (b58731b)
+
 ## Version 0.26.0
 
 - feat: integrate keys and query (8b6eabd)
