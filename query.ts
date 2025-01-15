@@ -4,6 +4,14 @@
  * @module
  */
 
+import {
+  keyToJSON,
+  type KvKeyJSON,
+  type KvValueJSON,
+  toKey,
+  toValue,
+  valueToJSON,
+} from "@deno/kv-utils/json";
 import { equal } from "@std/assert/equal";
 import { assert } from "@std/assert/assert";
 
@@ -48,19 +56,71 @@ export type Operation =
 
 type Mappable = Record<string, unknown> | Map<string, unknown>;
 
-/**
- * The interface which is used by {@linkcode query} to filter entries. As long
- * as the object implements the `.test()` method, it can be used as a filter.
- * It will be passed the value of the entry and should return `true` if the
- * entry should be included in the results.
- */
-export interface FilterLike {
-  test(value: unknown): boolean;
-}
-
 export interface QueryLike<T = unknown> {
   readonly selector: Deno.KvListSelector;
   get(): Deno.KvListIterator<T>;
+}
+
+/**
+ * A representation of a {@linkcode Deno.KvListSelector} as a JSON object.
+ */
+export type KvListSelectorJSON =
+  | { prefix: KvKeyJSON }
+  | { prefix: KvKeyJSON; start: KvKeyJSON }
+  | { prefix: KvKeyJSON; end: KvKeyJSON }
+  | { start: KvKeyJSON; end: KvKeyJSON };
+
+/**
+ * A representation of an _and_ filter as a JSON object.
+ */
+export interface KvFilterAndJSON {
+  kind: "and";
+  filters: KvFilterJSON[];
+}
+
+/**
+ * A representation of an _or_ filter as a JSON object.
+ */
+export interface KvFilterOrJSON {
+  kind: "or";
+  filters: KvFilterJSON[];
+}
+
+/**
+ * A representation of a _where_ filter as a JSON object.
+ */
+export interface KvFilterWhereJSON {
+  kind: "where";
+  property: string | string[];
+  operation: Operation;
+  value: KvValueJSON;
+}
+
+/**
+ * A representation of a _value_ filter as a JSON object.
+ */
+export interface KvFilterValueJSON {
+  kind: "value";
+  operation: Operation;
+  value: KvValueJSON;
+}
+
+/**
+ * A representation of a filter as a JSON object.
+ */
+export type KvFilterJSON =
+  | KvFilterAndJSON
+  | KvFilterOrJSON
+  | KvFilterWhereJSON
+  | KvFilterValueJSON;
+
+/**
+ * A representation of a query as a JSON object.
+ */
+export interface KvQueryJSON {
+  selector: KvListSelectorJSON;
+  options?: Deno.KvListOptions;
+  filters: KvFilterJSON[];
 }
 
 function getValue(obj: Mappable, key: string): unknown {
@@ -81,9 +141,42 @@ function isMappable(value: unknown): value is Mappable {
   return typeof value === "object" && value !== null;
 }
 
-function isFilterLike(value: unknown): value is FilterLike {
-  return typeof value === "object" && value !== null && "test" in value &&
-    typeof value.test === "function";
+function selectorToJSON(selector: Deno.KvListSelector): KvListSelectorJSON {
+  if ("prefix" in selector) {
+    if ("start" in selector) {
+      return {
+        prefix: keyToJSON(selector.prefix),
+        start: keyToJSON(selector.start),
+      };
+    }
+    if ("end" in selector) {
+      return {
+        prefix: keyToJSON(selector.prefix),
+        end: keyToJSON(selector.end),
+      };
+    }
+    return { prefix: keyToJSON(selector.prefix) };
+  }
+  return { start: keyToJSON(selector.start), end: keyToJSON(selector.end) };
+}
+
+function toSelector(json: KvListSelectorJSON): Deno.KvListSelector {
+  if ("prefix" in json) {
+    if ("start" in json) {
+      return {
+        prefix: toKey(json.prefix),
+        start: toKey(json.start),
+      };
+    }
+    if ("end" in json) {
+      return {
+        prefix: toKey(json.prefix),
+        end: toKey(json.end),
+      };
+    }
+    return { prefix: toKey(json.prefix) };
+  }
+  return { start: toKey(json.start), end: toKey(json.end) };
 }
 
 /**
@@ -143,6 +236,20 @@ export class PropertyPath {
       current = getValue(current, part);
     }
     return current;
+  }
+
+  /**
+   * Convert the property path to a JSON array.
+   */
+  toJSON(): string[] {
+    return this.#parts;
+  }
+
+  /**
+   * Create a property path from an array of parts.
+   */
+  static from(parts: string[]): PropertyPath {
+    return new PropertyPath(...parts);
   }
 }
 
@@ -248,28 +355,110 @@ function exec(other: any, operation: Operation, value: any | any[]): boolean {
  * assert(!filter.test({ age: 20 }));
  * ```
  */
-export class Filter implements FilterLike {
-  #condition: boolean | ((value: unknown) => boolean);
+export class Filter {
+  #kind: "and" | "or" | "value" | "where";
+  #property?: string | PropertyPath;
   #filters: Filter[];
+  #operation?: Operation;
+  #value?: unknown | unknown[];
 
+  private constructor(kind: "and" | "or", filters: Filter[]);
   private constructor(
-    condition: boolean | ((value: unknown) => boolean),
+    kind: "where",
+    filters: undefined,
+    property: string | PropertyPath,
+    operation: Operation,
+    value: unknown | unknown[],
+  );
+  private constructor(
+    kind: "value",
+    filters: undefined,
+    property: undefined,
+    operation: Operation,
+    value: unknown | unknown[],
+  );
+  private constructor(
+    kind: "and" | "or" | "value" | "where",
     filters: Filter[] = [],
+    property?: string | PropertyPath,
+    operation?: Operation,
+    value?: unknown | unknown[],
   ) {
-    this.#condition = condition;
+    this.#kind = kind;
     this.#filters = filters;
+    this.#property = property;
+    this.#operation = operation;
+    this.#value = value;
   }
 
   /**
    * Test the value against the filter.
    */
   test(value: unknown): boolean {
-    if (typeof this.#condition === "boolean") {
-      return this.#condition
-        ? this.#filters.every((f) => f.test(value))
-        : this.#filters.some((f) => f.test(value));
+    switch (this.#kind) {
+      case "and":
+        return this.#filters.every((f) => f.test(value));
+      case "or":
+        return this.#filters.some((f) => f.test(value));
+      case "where":
+        assert(this.#property);
+        assert(this.#operation);
+        if (this.#property instanceof PropertyPath) {
+          if (this.#property.exists(value)) {
+            const propValue = this.#property.value(value);
+            return exec(propValue, this.#operation, this.#value);
+          }
+          return false;
+        }
+        if (isMappable(value)) {
+          if (hasProperty(value, this.#property)) {
+            const propValue = getValue(value, this.#property);
+            return exec(propValue, this.#operation, this.#value);
+          }
+          return false;
+        }
+        return false;
+      case "value":
+        assert(this.#operation);
+        return exec(value, this.#operation, this.#value);
     }
-    return this.#condition(value);
+    throw new TypeError("Invalid filter kind");
+  }
+
+  /**
+   * Convert the filter to a JSON object.
+   */
+  toJSON(): KvFilterJSON {
+    switch (this.#kind) {
+      case "and":
+        return {
+          kind: "and",
+          filters: this.#filters.map((f) => f.toJSON()),
+        };
+      case "or":
+        return {
+          kind: "or",
+          filters: this.#filters.map((f) => f.toJSON()),
+        };
+      case "where":
+        assert(this.#property);
+        assert(this.#operation);
+        return {
+          kind: "where",
+          property: this.#property instanceof PropertyPath
+            ? this.#property.toJSON()
+            : this.#property,
+          operation: this.#operation,
+          value: valueToJSON(this.#value),
+        };
+      case "value":
+        assert(this.#operation);
+        return {
+          kind: "value",
+          operation: this.#operation,
+          value: valueToJSON(this.#value),
+        };
+    }
   }
 
   /**
@@ -291,7 +480,7 @@ export class Filter implements FilterLike {
    * ```
    */
   static and(...filters: Filter[]): Filter {
-    return new Filter(true, filters);
+    return new Filter("and", filters);
   }
 
   /**
@@ -314,7 +503,7 @@ export class Filter implements FilterLike {
    * ```
    */
   static or(...filters: Filter[]): Filter {
-    return new Filter(false, filters);
+    return new Filter("or", filters);
   }
 
   /**
@@ -369,7 +558,7 @@ export class Filter implements FilterLike {
    */
   static value(operation: Operation, value: unknown): Filter;
   static value(operation: Operation, value: unknown | unknown[]): Filter {
-    return new Filter((other) => exec(other, operation, value));
+    return new Filter("value", undefined, undefined, operation, value);
   }
 
   /**
@@ -437,23 +626,29 @@ export class Filter implements FilterLike {
     operation: Operation,
     value: unknown | unknown[],
   ): Filter {
-    return new Filter((other) => {
-      if (property instanceof PropertyPath) {
-        if (property.exists(other)) {
-          const propValue = property.value(other);
-          return exec(propValue, operation, value);
-        }
-        return false;
-      }
-      if (isMappable(other)) {
-        if (hasProperty(other, property)) {
-          const propValue = getValue(other, property);
-          return exec(propValue, operation, value);
-        }
-        return false;
-      }
-      return false;
-    });
+    return new Filter("where", undefined, property, operation, value);
+  }
+
+  /**
+   * Parse a filter from a JSON object.
+   */
+  static parse(json: KvFilterJSON): Filter {
+    switch (json.kind) {
+      case "and":
+        return Filter.and(...json.filters.map(Filter.parse));
+      case "or":
+        return Filter.or(...json.filters.map(Filter.parse));
+      case "where":
+        return Filter.where(
+          Array.isArray(json.property)
+            ? PropertyPath.from(json.property)
+            : json.property,
+          json.operation,
+          toValue(json.value),
+        );
+      case "value":
+        return Filter.value(json.operation, toValue(json.value));
+    }
   }
 }
 
@@ -462,13 +657,13 @@ const AsyncIterator = Object.getPrototypeOf(async function* () {}).constructor;
 class QueryListIterator<T = unknown> extends AsyncIterator
   implements Deno.KvListIterator<T> {
   #iterator: Deno.KvListIterator<T>;
-  #query: FilterLike[];
+  #query: Filter[];
 
   get cursor(): string {
     return this.#iterator.cursor;
   }
 
-  constructor(iterator: Deno.KvListIterator<T>, query: FilterLike[]) {
+  constructor(iterator: Deno.KvListIterator<T>, query: Filter[]) {
     super();
     this.#iterator = iterator;
     this.#query = query;
@@ -495,7 +690,7 @@ export class Query<T = unknown> implements QueryLike<T> {
   #kv: Deno.Kv;
   #selector: Deno.KvListSelector;
   #options: Deno.KvListOptions;
-  #query: FilterLike[] = [];
+  #query: Filter[] = [];
 
   /**
    * The selector that is used to query the entries.
@@ -752,7 +947,7 @@ export class Query<T = unknown> implements QueryLike<T> {
    * db.close();
    * ```
    */
-  where(filter: FilterLike): this;
+  where(filter: Filter): this;
   /**
    * Add a property filter to the query. Only entries which values match the
    * filter will be returned.
@@ -826,17 +1021,37 @@ export class Query<T = unknown> implements QueryLike<T> {
     value: unknown,
   ): this;
   where(
-    propertyOrFilter: FilterLike | string | PropertyPath,
+    propertyOrFilter: Filter | string | PropertyPath,
     operation?: Operation,
     value?: unknown | unknown[],
   ): this {
-    if (isFilterLike(propertyOrFilter)) {
+    if (propertyOrFilter instanceof Filter) {
       this.#query.push(propertyOrFilter);
     } else {
       assert(operation, "Operation is required");
       this.#query.push(Filter.where(propertyOrFilter, operation, value));
     }
     return this;
+  }
+
+  /**
+   * Convert the query to a JSON object.
+   */
+  toJSON(): KvQueryJSON {
+    return {
+      selector: selectorToJSON(this.#selector),
+      options: this.#options,
+      filters: this.#query.map((f) => f.toJSON()),
+    };
+  }
+
+  /**
+   * Parse a query from an instance of {@linkcode Deno.Kv} and a JSON object.
+   */
+  static parse<T = unknown>(kv: Deno.Kv, json: KvQueryJSON): Query<T> {
+    const query = new Query<T>(kv, toSelector(json.selector), json.options);
+    query.#query = json.filters.map(Filter.parse);
+    return query;
   }
 }
 

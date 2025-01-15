@@ -1,7 +1,8 @@
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/equals";
 import { assertThrows } from "@std/assert/throws";
-import { Filter, PropertyPath, query } from "./query.ts";
+
+import { Filter, PropertyPath, Query, query } from "./query.ts";
 
 Deno.test("PropertyPath - exists", () => {
   const path = new PropertyPath("a", "b", "c");
@@ -149,6 +150,71 @@ Deno.test("Filter.or()", () => {
   assert(!filter.test({ age: 15 }));
 });
 
+Deno.test("Filter.where() - toJSON", () => {
+  const filter = Filter.where("name", "matches", /^test/);
+  assertEquals(filter.toJSON(), {
+    kind: "where",
+    property: "name",
+    operation: "matches",
+    value: { type: "RegExp", value: "/^test/" },
+  });
+});
+
+Deno.test("Filter.value() - toJSON", () => {
+  const filter = Filter.value("matches", /^test/);
+  assertEquals(filter.toJSON(), {
+    kind: "value",
+    operation: "matches",
+    value: { type: "RegExp", value: "/^test/" },
+  });
+});
+
+Deno.test("Filter.or() - toJSON", () => {
+  const filter = Filter.or(
+    Filter.value("matches", /^test/),
+    Filter.where("age", ">", 10),
+  );
+  assertEquals(filter.toJSON(), {
+    kind: "or",
+    filters: [
+      {
+        kind: "value",
+        operation: "matches",
+        value: { type: "RegExp", value: "/^test/" },
+      },
+      {
+        kind: "where",
+        property: "age",
+        operation: ">",
+        value: { type: "number", value: 10 },
+      },
+    ],
+  });
+});
+
+Deno.test("Filter.and() - toJSON", () => {
+  const filter = Filter.and(
+    Filter.value("matches", /^test/),
+    Filter.where("age", ">", 10),
+  );
+  assertEquals(filter.toJSON(), {
+    kind: "and",
+    filters: [
+      {
+        kind: "value",
+        operation: "matches",
+        value: { type: "RegExp", value: "/^test/" },
+      },
+      {
+        kind: "where",
+        property: "age",
+        operation: ">",
+        value: { type: "number", value: 10 },
+      },
+    ],
+  });
+});
+
 Deno.test("query() - value", async () => {
   const db = await Deno.openKv(":memory:");
   await db
@@ -273,5 +339,54 @@ Deno.test("query() - tree", async () => {
       { part: "b", children: [{ part: "h", hasValue: true }] },
     ],
   });
+  db.close();
+});
+
+Deno.test("Query - toJSON", async () => {
+  const db = await Deno.openKv(":memory:");
+  const result = query(db, { prefix: ["a"] })
+    .where("age", "==", 10)
+    .toJSON();
+  assertEquals(result, {
+    selector: { prefix: [{ type: "string", value: "a" }] },
+    options: {},
+    filters: [{
+      kind: "where",
+      property: "age",
+      operation: "==",
+      value: { type: "number", value: 10 },
+    }],
+  });
+  db.close();
+});
+
+Deno.test("Query.parse()", async () => {
+  const db = await Deno.openKv(":memory:");
+  await db
+    .atomic()
+    .set(["a", "b"], { age: 10 })
+    .set(["a", "b", "c"], { age: 10 })
+    .set(["a", "d", "e"], { age: 10 })
+    .set(["a", "d", "f"], { age: 10 })
+    .set(["a", "g"], { age: 20 })
+    .set(["b", "h"], { age: 10 })
+    .commit();
+  const q = Query.parse(db, {
+    selector: { prefix: [{ type: "string", value: "a" }] },
+    options: {},
+    filters: [{
+      kind: "where",
+      property: "age",
+      operation: "==",
+      value: { type: "number", value: 10 },
+    }],
+  });
+  const result = await q.keys();
+  assertEquals(result, [
+    ["a", "b"],
+    ["a", "b", "c"],
+    ["a", "d", "e"],
+    ["a", "d", "f"],
+  ]);
   db.close();
 });
