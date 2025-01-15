@@ -174,3 +174,14 @@ Deno.test({
     return cleanup();
   },
 });
+
+Deno.test({
+  name: "kvToolbox - db",
+  async fn() {
+    const path = await getPath();
+    const kv = await openKvToolbox({ path });
+    assert(kv.db instanceof Deno.Kv);
+    kv.close();
+    return cleanup();
+  },
+});

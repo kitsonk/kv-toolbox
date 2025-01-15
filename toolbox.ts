@@ -128,6 +128,13 @@ export { Filter, PropertyPath } from "./query.ts";
 export class KvToolbox implements Disposable {
   #kv: Deno.Kv;
 
+  /**
+   * The underlying {@linkcode Deno.Kv} instance.
+   */
+  get db(): Deno.Kv {
+    return this.#kv;
+  }
+
   constructor(kv: Deno.Kv) {
     this.#kv = kv;
   }
