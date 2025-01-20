@@ -40,6 +40,7 @@ import {
  * - `"in"` - value is in the array of supplied values
  * - `"not-in"` - value is not in the array of supplied values
  * - `"matches"` - value matches the regular expression
+ * - `"kind-of"` - value is of the specified kind
  */
 export type Operation =
   | "<"
@@ -52,9 +53,15 @@ export type Operation =
   | "array-contains-any"
   | "in"
   | "not-in"
-  | "matches";
+  | "matches"
+  | "kind-of";
 
 type Mappable = Record<string, unknown> | Map<string, unknown>;
+
+/**
+ * The different kinds of values that can be stored in a {@linkcode Deno.Kv}.
+ */
+export type Kinds = KvValueJSON["type"];
 
 export interface QueryLike<T = unknown> {
   readonly selector: Deno.KvListSelector;
@@ -121,6 +128,105 @@ export interface KvQueryJSON {
   selector: KvListSelectorJSON;
   options?: Deno.KvListOptions;
   filters: KvFilterJSON[];
+}
+
+function getKind(value: unknown): Kinds {
+  const type = typeof value;
+  switch (type) {
+    case "bigint":
+    case "boolean":
+    case "number":
+    case "string":
+    case "undefined":
+      return type;
+    case "object":
+      if (Array.isArray(value)) {
+        return "Array";
+      }
+      if (value instanceof DataView) {
+        return "DataView";
+      }
+      if (ArrayBuffer.isView(value)) {
+        if (value instanceof Int8Array) {
+          return "Int8Array";
+        }
+        if (value instanceof Uint8Array) {
+          return "Uint8Array";
+        }
+        if (value instanceof Uint8ClampedArray) {
+          return "Uint8ClampedArray";
+        }
+        if (value instanceof Int16Array) {
+          return "Int16Array";
+        }
+        if (value instanceof Uint16Array) {
+          return "Uint16Array";
+        }
+        if (value instanceof Int32Array) {
+          return "Int32Array";
+        }
+        if (value instanceof Uint32Array) {
+          return "Uint32Array";
+        }
+        if (value instanceof Float32Array) {
+          return "Float32Array";
+        }
+        if (value instanceof Float64Array) {
+          return "Float64Array";
+        }
+        if (value instanceof BigInt64Array) {
+          return "BigInt64Array";
+        }
+        if (value instanceof BigUint64Array) {
+          return "BigUint64Array";
+        }
+      }
+      if (value instanceof ArrayBuffer) {
+        return "ArrayBuffer";
+      }
+      if (value instanceof Date) {
+        return "Date";
+      }
+      if ("Deno" in globalThis && value instanceof Deno.KvU64) {
+        return "KvU64";
+      }
+      if (value instanceof Error) {
+        if (value instanceof EvalError) {
+          return "EvalError";
+        }
+        if (value instanceof RangeError) {
+          return "RangeError";
+        }
+        if (value instanceof ReferenceError) {
+          return "ReferenceError";
+        }
+        if (value instanceof SyntaxError) {
+          return "SyntaxError";
+        }
+        if (value instanceof TypeError) {
+          return "TypeError";
+        }
+        if (value instanceof URIError) {
+          return "URIError";
+        }
+        return "Error";
+      }
+      if (value instanceof Map) {
+        return "Map";
+      }
+      if (value === null) {
+        return "null";
+      }
+      if (value instanceof RegExp) {
+        return "RegExp";
+      }
+      if (value instanceof Set) {
+        return "Set";
+      }
+      return "object";
+    default:
+      return "undefined";
+  }
 }
 
 function getValue(obj: Mappable, key: string): unknown {
@@ -293,6 +399,8 @@ function exec(other: any, operation: Operation, value: any | any[]): boolean {
         return value.test(other);
       }
       break;
+    case "kind-of":
+      return getKind(other) === value;
   }
   return false;
 }
@@ -521,6 +629,22 @@ export class Filter {
    * assert(!filter.test(11));
    * ```
    */
+  static value(operation: "kind-of", value: Kinds): Filter;
+  /**
+   * Create a filter which will return `true` if the value matches the
+   * operation and value.
+   *
+   * @example
+   *
+   * ```ts
+   * import { Filter } from "@kitsonk/kv-toolbox/query";
+   * import { assert } from "@std/assert/assert";
+   *
+   * const filter = Filter.value("==", 10);
+   * assert(filter.test(10));
+   * assert(!filter.test(11));
+   * ```
+   */
   static value(operation: "matches", value: RegExp): Filter;
   /**
    * Create a filter which will return `true` if the value matches the
@@ -561,6 +685,26 @@ export class Filter {
     return new Filter("value", undefined, undefined, operation, value);
   }
 
+  /**
+   * Create a filter which will return `true` if the value of the property
+   * matches the operation and value.
+   *
+   * @example
+   *
+   * ```ts
+   * import { Filter } from "@kitsonk/kv-toolbox/query";
+   * import { assert } from "@std/assert/assert";
+   *
+   * const filter = Filter.where("age", "<=", 10);
+   * assert(filter.test({ age: 10 }));
+   * assert(!filter.test({ age: 11 }));
+   * ```
+   */
+  static where(
+    property: string | PropertyPath,
+    operation: "kind-of",
+    value: Kinds,
+  ): Filter;
   /**
    * Create a filter which will return `true` if the value of the property
    * matches the operation and value.
@@ -876,6 +1020,26 @@ export class Query<T = unknown> implements QueryLike<T> {
    * db.close();
    * ```
    */
+  value(operation: "kind-of", value: Kinds): this;
+  /**
+   * Add a filter to the query where the value of the entry matches the
+   * operation and value.
+   *
+   * @example
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const db = await Deno.openKv();
+   * const result = query(db, { prefix: [] })
+   *   .value("==", { age: 10 })
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * db.close();
+   * ```
+   */
   value(operation: "matches", value: RegExp): this;
   /**
    * Add a filter to the query where the value of the entry matches the
@@ -948,6 +1112,30 @@ export class Query<T = unknown> implements QueryLike<T> {
    * ```
    */
   where(filter: Filter): this;
+  /**
+   * Add a property filter to the query. Only entries which values match the
+   * filter will be returned.
+   *
+   * @example
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const db = await Deno.openKv();
+   * const result = query(db, { prefix: [] })
+   *   .where("age", "<=", 10)
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * db.close();
+   * ```
+   */
+  where(
+    property: string | PropertyPath,
+    operation: "kind-of",
+    value: Kinds,
+  ): this;
   /**
    * Add a property filter to the query. Only entries which values match the
    * filter will be returned.

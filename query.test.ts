@@ -123,6 +123,115 @@ Deno.test("Filter.where() - matches", () => {
   assert(!filter.test({ name: " test" }));
 });
 
+Deno.test("Filter.where() - kind of - string", () => {
+  const filter = Filter.where("name", "kind-of", "string");
+  assert(filter.test({ name: "test" }));
+  assert(!filter.test({ name: 12 }));
+});
+
+Deno.test("Filter.where() - kind of - number", () => {
+  const filter = Filter.where("age", "kind-of", "number");
+  assert(filter.test({ age: 12 }));
+  assert(!filter.test({ age: "12" }));
+});
+
+Deno.test("Filter.where() - kind of - boolean", () => {
+  const filter = Filter.where("active", "kind-of", "boolean");
+  assert(filter.test({ active: true }));
+  assert(!filter.test({ active: "true" }));
+});
+
+Deno.test("Filter.where() - kind of - undefined", () => {
+  const filter = Filter.where("active", "kind-of", "undefined");
+  assert(filter.test({ active: undefined }));
+  assert(!filter.test({ active: "undefined" }));
+  assert(!filter.test({ active: null }));
+  assert(!filter.test({}));
+});
+
+Deno.test("Filter.where() - kind of - null", () => {
+  const filter = Filter.where("active", "kind-of", "null");
+  assert(filter.test({ active: null }));
+  assert(!filter.test({ active: "null" }));
+  assert(!filter.test({ active: undefined }));
+  assert(!filter.test({}));
+});
+
+Deno.test("Filter.where() - kind of - bigint", () => {
+  const filter = Filter.where("age", "kind-of", "bigint");
+  assert(filter.test({ age: 12n }));
+  assert(!filter.test({ age: 12 }));
+});
+
+Deno.test("Filter.where() - kind of - Date", () => {
+  const filter = Filter.where("createdAt", "kind-of", "Date");
+  assert(filter.test({ createdAt: new Date() }));
+  assert(!filter.test({ createdAt: Date.now() }));
+});
+
+Deno.test("Filter.where() - kind of - Map", () => {
+  const filter = Filter.where("tags", "kind-of", "Map");
+  assert(filter.test({ tags: new Map() }));
+  assert(!filter.test({ tags: {} }));
+});
+
+Deno.test("Filter.where() - kind of - Set", () => {
+  const filter = Filter.where("tags", "kind-of", "Set");
+  assert(filter.test({ tags: new Set() }));
+  assert(!filter.test({ tags: [] }));
+});
+
+Deno.test("Filter.where() - kind of - RegExp", () => {
+  const filter = Filter.where("tags", "kind-of", "RegExp");
+  assert(filter.test({ tags: /^test/ }));
+  assert(!filter.test({ tags: {} }));
+});
+
+Deno.test("Filter.where() - kind of - Array", () => {
+  const filter = Filter.where("tags", "kind-of", "Array");
+  assert(filter.test({ tags: ["1"] }));
+  assert(!filter.test({ tags: { 1: true } }));
+});
+
+Deno.test("Filter.where() - kind of - KvU64", () => {
+  const filter = Filter.where("tags", "kind-of", "KvU64");
+  assert(filter.test({ tags: new Deno.KvU64(1n) }));
+  assert(!filter.test({ tags: 1n }));
+});
+
+Deno.test("Filter.where() - kind of - ArrayBuffer", () => {
+  const filter = Filter.where("data", "kind-of", "ArrayBuffer");
+  assert(filter.test({ data: new ArrayBuffer(0) }));
+  assert(!filter.test({ data: [] }));
+});
+
+Deno.test("Filter.where() - kind of - DataView", () => {
+  const filter = Filter.where("data", "kind-of", "DataView");
+  assert(filter.test({ data: new DataView(new ArrayBuffer(0)) }));
+  assert(!filter.test({ data: [] }));
+});
+
+Deno.test("Filter.where() - kind of - Int8Array", () => {
+  const filter = Filter.where("data", "kind-of", "Int8Array");
+  assert(filter.test({ data: new Int8Array([1, 2, 3]) }));
+  assert(!filter.test({ data: new Uint8Array([1, 2, 3]) }));
+  assert(!filter.test({ data: [1, 2, 3] }));
+});
+
+Deno.test("Filter.where() - kind of - TypeError", () => {
+  const filter = Filter.where("error", "kind-of", "TypeError");
+  assert(filter.test({ error: new TypeError("ooops!") }));
+  assert(!filter.test({ error: new Error("ooops!") }));
+  assert(!filter.test({ error: "TypeError" }));
+  assert(!filter.test({ error: { message: "ooops!" } }));
+});
+
+Deno.test("Filter.where() - kind of - object", () => {
+  const filter = Filter.where("tags", "kind-of", "object");
+  assert(filter.test({ tags: {} }));
+  assert(!filter.test({ tags: [] }));
+});
+
 Deno.test("Filter.where() - PropertyPath", () => {
   const filter = Filter.where(new PropertyPath("a", "b", "c"), "==", 1);
   assert(filter.test({ a: { b: { c: 1 } } }));
