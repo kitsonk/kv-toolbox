@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.27.2
+
+- feat: add query by kind of (b0baba9)
+
 ## Version 0.27.1
 
 - feat: add db property to toolbox (5666c95)
