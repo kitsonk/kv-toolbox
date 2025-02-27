@@ -499,3 +499,40 @@ Deno.test("Query.parse()", async () => {
   ]);
   db.close();
 });
+
+Deno.test("Query - limit on construction", async () => {
+  const db = await Deno.openKv(":memory:");
+  await db
+    .atomic()
+    .set(["a", "b"], { age: 10 })
+    .set(["a", "b", "c"], { age: 10 })
+    .set(["a", "d", "e"], { age: 10 })
+    .set(["a", "d", "f"], { age: 10 })
+    .set(["a", "g"], { age: 20 })
+    .set(["b", "h"], { age: 10 })
+    .commit();
+  const result = await query(db, { prefix: [] }, { limit: 2 })
+    .where("age", "==", 10)
+    .keys();
+  assertEquals(result, [["a", "b"], ["a", "b", "c"]]);
+  db.close();
+});
+
+Deno.test("Query - limit API", async () => {
+  const db = await Deno.openKv(":memory:");
+  await db
+    .atomic()
+    .set(["a", "b"], { age: 10 })
+    .set(["a", "b", "c"], { age: 10 })
+    .set(["a", "d", "e"], { age: 10 })
+    .set(["a", "d", "f"], { age: 10 })
+    .set(["a", "g"], { age: 20 })
+    .set(["b", "h"], { age: 10 })
+    .commit();
+  const result = await query(db, { prefix: [] })
+    .where("age", "==", 10)
+    .limit(2)
+    .keys();
+  assertEquals(result, [["a", "b"], ["a", "b", "c"]]);
+  db.close();
+});

@@ -801,21 +801,32 @@ const AsyncIterator = Object.getPrototypeOf(async function* () {}).constructor;
 class QueryListIterator<T = unknown> extends AsyncIterator
   implements Deno.KvListIterator<T> {
   #iterator: Deno.KvListIterator<T>;
+  #count = 0;
+  #limit?: number;
   #query: Filter[];
 
   get cursor(): string {
     return this.#iterator.cursor;
   }
 
-  constructor(iterator: Deno.KvListIterator<T>, query: Filter[]) {
+  constructor(
+    iterator: Deno.KvListIterator<T>,
+    query: Filter[],
+    limit?: number,
+  ) {
     super();
     this.#iterator = iterator;
     this.#query = query;
+    this.#limit = limit;
   }
 
   async next(): Promise<IteratorResult<Deno.KvEntry<T>, undefined>> {
     for await (const entry of this.#iterator) {
       if (this.#query.every((f) => f.test(entry.value))) {
+        this.#count++;
+        if (this.#limit && this.#count > this.#limit) {
+          return { value: undefined, done: true };
+        }
         return { value: entry, done: false };
       }
     }
@@ -832,6 +843,7 @@ class QueryListIterator<T = unknown> extends AsyncIterator
  */
 export class Query<T = unknown> implements QueryLike<T> {
   #kv: Deno.Kv;
+  #limit?: number;
   #selector: Deno.KvListSelector;
   #options: Deno.KvListOptions;
   #query: Filter[] = [];
@@ -850,7 +862,9 @@ export class Query<T = unknown> implements QueryLike<T> {
   ) {
     this.#kv = kv;
     this.#selector = selector;
-    this.#options = options;
+    const { limit, ...rest } = options;
+    this.#limit = limit;
+    this.#options = rest;
   }
 
   /**
@@ -898,7 +912,18 @@ export class Query<T = unknown> implements QueryLike<T> {
     return new QueryListIterator<T>(
       this.#kv.list<T>(this.#selector, this.#options),
       this.#query,
+      this.#limit,
     );
+  }
+
+  /**
+   * Set the limit of the number of entries to return.
+   *
+   * This will override any limit that may have been set in the options.
+   */
+  limit(limit: number): this {
+    this.#limit = limit;
+    return this;
   }
 
   /**
