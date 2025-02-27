@@ -1,5 +1,11 @@
 # kv-toolbox change log
 
+## Version 0.27.3
+
+- feat: add limit to query (e3fc987)
+- fix: properly handle `ArrayBufferLike` and `ArrayBufferView` (6e0365f)
+- chore: update ci to Deno 2.2 (7177b14)
+
 ## Version 0.27.2
 
 - feat: add query by kind of (b0baba9)
