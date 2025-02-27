@@ -215,8 +215,7 @@ export class CryptoKv {
         (this.#cryptoKey = await importKey(this.#key));
       const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
       if (
-        ArrayBuffer.isView(blob) || blob instanceof ArrayBuffer ||
-        blob instanceof SharedArrayBuffer
+        ArrayBuffer.isView(blob) || blob instanceof ArrayBuffer
       ) {
         return concat([
           iv,

@@ -39,7 +39,11 @@ interface KVToolboxAtomicOperation extends Deno.AtomicOperation {
 
   setBlob(
     key: Deno.KvKey,
-    value: ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
+    value:
+      | ArrayBufferView
+      | ArrayBufferLike
+      | ReadableStream<Uint8Array>
+      | Blob,
     options?: { expireIn?: number },
   ): this;
 }
@@ -191,7 +195,11 @@ export class BatchedAtomicOperation {
    */
   setBlob(
     key: Deno.KvKey,
-    value: ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
+    value:
+      | ArrayBufferView
+      | ArrayBufferLike
+      | ReadableStream<Uint8Array>
+      | Blob,
     options?: { expireIn?: number },
   ): this {
     return this.#enqueue("setBlob", [key, value, options]);

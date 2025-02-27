@@ -210,8 +210,10 @@ async function asJSON(
   return json;
 }
 
-function toParts(blob: ArrayBufferLike): string[] {
-  const buffer = new Uint8Array(blob);
+function toParts(blob: ArrayBufferLike | ArrayBufferView): string[] {
+  const buffer = ArrayBuffer.isView(blob)
+    ? new Uint8Array(blob.buffer)
+    : new Uint8Array(blob);
   const parts: string[] = [];
   let offset = 0;
   while (buffer.byteLength > offset) {
@@ -692,9 +694,11 @@ export async function toJSON(blob: Blob): Promise<BlobBlobJSON>;
  * const json = JSON.stringify(toJSON(u8));
  * ```
  */
-export async function toJSON(blob: ArrayBufferLike): Promise<BlobBufferJSON>;
 export async function toJSON(
-  blob: ArrayBufferLike | Blob | File,
+  blob: ArrayBufferLike | ArrayBufferView,
+): Promise<BlobBufferJSON>;
+export async function toJSON(
+  blob: ArrayBufferLike | ArrayBufferView | Blob | File,
 ): Promise<BlobJSON> {
   new Uint8Array();
   if (blob instanceof File) {
