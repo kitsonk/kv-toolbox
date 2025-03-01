@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.27.4
+
+- fix: uniqueCount handles falsey keyparts properly (ac1d5da)
+
 ## Version 0.27.3
 
 - feat: add limit to query (e3fc987)
