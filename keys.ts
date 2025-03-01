@@ -543,7 +543,7 @@ export async function uniqueCount(
       if (!prefixCounts.has(part)) {
         prefixCounts.set(part, { count: 0 });
       }
-      if (next) {
+      if (next != null) {
         const count = prefixCounts.get(part)!;
         if (next === BLOB_KEY) {
           count.isBlob = true;

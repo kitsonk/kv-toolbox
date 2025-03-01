@@ -149,6 +149,29 @@ Deno.test({
 });
 
 Deno.test({
+  name:
+    "uniqueCount - returns a count when there is only a single subkey that is falsy",
+  async fn() {
+    const kv = await setup();
+    const res = await kv.atomic()
+      .set(["a"], "a")
+      .set(["a", "b", ""], "c")
+      .set(["a", "h"], "h")
+      .set(["e"], "e")
+      .commit();
+    assert(res.ok);
+
+    const actual = await uniqueCount(kv, ["a"]);
+
+    assertEquals(actual, [
+      { key: ["a", "b"], count: 1 },
+      { key: ["a", "h"], count: 0 },
+    ]);
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "uniqueCount - returns a list of unique sub-keys from query",
   async fn() {
     const kv = await setup();
