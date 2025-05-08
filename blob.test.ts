@@ -2,6 +2,7 @@ import {
   assert,
   assertEquals,
   assertRejects,
+  assertThrows,
   setup,
   teardown,
   timingSafeEqual,
@@ -14,6 +15,7 @@ import {
   getAsResponse,
   getAsStream,
   getMeta,
+  list,
   remove,
   set,
   toBlob,
@@ -424,6 +426,167 @@ Deno.test({
     const meta = await getMeta(kv, ["hello"]);
     assert(meta);
     assertEquals(meta.value, { kind: "buffer", size: 65_536 });
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "list - default",
+  async fn() {
+    const kv = await setup();
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(
+      list(kv, { prefix: ["hello"] }),
+    );
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assertEquals(entry.value, { kind: "buffer", size: 3 });
+    }
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "list - with limit",
+  async fn() {
+    const kv = await setup();
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(
+      list(kv, { prefix: ["hello"] }, { limit: 2 }),
+    );
+    assertEquals(entries.length, 2);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assertEquals(entry.value, { kind: "buffer", size: 3 });
+    }
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "list - meta",
+  async fn() {
+    const kv = await setup();
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(
+      list(kv, { prefix: ["hello"] }, { meta: true }),
+    );
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assertEquals(entry.value, { kind: "buffer", size: 3 });
+    }
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "list - bytes",
+  async fn() {
+    const kv = await setup();
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(
+      list(kv, { prefix: ["hello"] }, { bytes: true }),
+    );
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assert(timingSafeEqual(entry.value, new Uint8Array([1, 2, 3])));
+    }
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "list - blob",
+  async fn() {
+    const kv = await setup();
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(
+      list(kv, { prefix: ["hello"] }, { blob: true }),
+    );
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assert(entry.value instanceof Blob);
+      assert(
+        timingSafeEqual(await entry.value.bytes(), new Uint8Array([1, 2, 3])),
+      );
+    }
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "list - stream",
+  async fn() {
+    const kv = await setup();
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(
+      list(kv, { prefix: ["hello"] }, { stream: true }),
+    );
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assert(entry.value instanceof ReadableStream);
+    }
+    return teardown();
+  },
+});
+
+Deno.test({
+  name: "list - with invalid options throws",
+  async fn() {
+    const kv = await setup();
+    assertThrows(
+      () => list(kv, { prefix: [] }, { blob: true, meta: true }),
+      TypeError,
+    );
+    assertThrows(
+      () => list(kv, { prefix: [] }, { blob: true, stream: true }),
+      TypeError,
+    );
+    assertThrows(
+      () => list(kv, { prefix: [] }, { blob: true, bytes: true }),
+      TypeError,
+    );
+    assertThrows(
+      () => list(kv, { prefix: [] }, { bytes: true, meta: true }),
+      TypeError,
+    );
+    assertThrows(
+      () => list(kv, { prefix: [] }, { bytes: true, stream: true }),
+      TypeError,
+    );
+    assertThrows(
+      () => list(kv, { prefix: [] }, { stream: true, meta: true }),
+      TypeError,
+    );
     return teardown();
   },
 });

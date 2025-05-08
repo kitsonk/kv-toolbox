@@ -45,6 +45,16 @@ export const BLOB_META_KEY = "__kv_toolbox_meta__";
 export const CHUNK_SIZE = 63_000;
 export const BATCH_SIZE = 10;
 
+function isBlobMetaKey(key: Deno.KvKey): boolean {
+  return key.length > 2 && key[key.length - 1] === BLOB_META_KEY;
+}
+
+function isMaybeEntryBlobMeta(
+  entry: Deno.KvEntryMaybe<unknown>,
+): entry is Deno.KvEntry<BlobMeta> {
+  return isBlobMetaKey(entry.key) && entry.value !== null;
+}
+
 function deleteKeys(
   operation: BatchedAtomicOperation,
   key: Deno.KvKey,
@@ -169,6 +179,55 @@ export async function asUint8Array(
   return found ? value : null;
 }
 
+export async function asBlob(
+  kv: Deno.Kv,
+  key: Deno.KvKey,
+  options: { consistency?: Deno.KvConsistencyLevel | undefined },
+  maybeMeta: Deno.KvEntryMaybe<BlobMeta>,
+): Promise<File | Blob | null> {
+  const prefix = [...key, BLOB_KEY];
+  const prefixLength = prefix.length;
+  const list = kv.list<Uint8Array>({ prefix }, {
+    ...options,
+    batchSize: BATCH_SIZE,
+  });
+  let found = false;
+  const parts: Uint8Array[] = [];
+  let i = 1;
+  for await (const item of list) {
+    if (
+      item.value && item.key.length === prefixLength + 1 &&
+      item.key[prefixLength] === i
+    ) {
+      i++;
+      found = true;
+      if (!(item.value instanceof Uint8Array)) {
+        throw new TypeError("KV value is not a Uint8Array.");
+      }
+      parts.push(item.value);
+    } else {
+      // encountered an unexpected key part, abort
+      break;
+    }
+  }
+  if (!found) {
+    return null;
+  }
+  if (maybeMeta.value) {
+    const { value } = maybeMeta;
+    if (value.kind === "file") {
+      return new File(parts, value.name, {
+        lastModified: value.lastModified,
+        type: value.type,
+      });
+    }
+    if (value.kind === "blob") {
+      return new Blob(parts, { type: value.type });
+    }
+  }
+  return new Blob(parts);
+}
+
 export function asStream(
   kv: Deno.Kv,
   key: Deno.KvKey,
@@ -263,5 +322,129 @@ export async function removeBlob(kv: Deno.Kv, key: Deno.KvKey) {
       op = op.delete(key);
     }
     await op.commit();
+  }
+}
+
+const AsyncIterator = Object.getPrototypeOf(async function* () {}).constructor;
+
+export class BlobListIterator extends AsyncIterator
+  implements
+    Deno.KvListIterator<
+      BlobMeta | Uint8Array | Blob | File | ReadableStream<Uint8Array>
+    > {
+  #iterator: Deno.KvListIterator<unknown>;
+  #count = 0;
+  #kv: Deno.Kv;
+  #limit?: number;
+  #options: Deno.KvListOptions;
+  #valueKind: "meta" | "bytes" | "blob" | "stream";
+
+  get cursor(): string {
+    return this.#iterator.cursor;
+  }
+
+  constructor(
+    kv: Deno.Kv,
+    prefix: Deno.KvListSelector,
+    options: Deno.KvListOptions = {},
+    valueKind: "meta" | "bytes" | "blob" | "stream",
+  ) {
+    super();
+    this.#kv = kv;
+    this.#valueKind = valueKind;
+    const { limit, ...optionsRest } = options;
+    this.#options = optionsRest;
+    this.#iterator = kv.list<BlobMeta>(prefix, optionsRest);
+    this.#limit = limit;
+  }
+
+  async next(): Promise<
+    IteratorResult<
+      Deno.KvEntry<
+        BlobMeta | Uint8Array | Blob | File | ReadableStream<Uint8Array>
+      >,
+      undefined
+    >
+  > {
+    for await (const entry of this.#iterator) {
+      if (isMaybeEntryBlobMeta(entry)) {
+        this.#count++;
+        if (this.#limit && this.#count > this.#limit) {
+          break;
+        }
+        const key: Deno.KvKey = entry.key.slice(0, -1);
+        if (this.#valueKind === "meta") {
+          return {
+            value: {
+              value: entry.value as BlobMeta,
+              key,
+              versionstamp: entry.versionstamp,
+            },
+            done: false,
+          };
+        }
+        if (this.#valueKind === "bytes") {
+          const value = await asUint8Array(
+            this.#kv,
+            key,
+            this.#options,
+          );
+          if (!value) {
+            throw new Error("Unexpected null for blob value");
+          }
+          return {
+            value: {
+              value,
+              key,
+              versionstamp: entry.versionstamp,
+            },
+            done: false,
+          };
+        }
+        if (this.#valueKind === "blob") {
+          const value = await asBlob(
+            this.#kv,
+            key,
+            this.#options,
+            entry,
+          );
+          if (!value) {
+            throw new Error("Unexpected null for blob value");
+          }
+          return {
+            value: {
+              value,
+              key,
+              versionstamp: entry.versionstamp,
+            },
+            done: false,
+          };
+        }
+        if (this.#valueKind === "stream") {
+          const value = asStream(
+            this.#kv,
+            key,
+            this.#options,
+          );
+          return {
+            value: {
+              value,
+              key,
+              versionstamp: entry.versionstamp,
+            },
+            done: false,
+          };
+        }
+      }
+    }
+    return { value: undefined, done: true };
+  }
+
+  [Symbol.asyncIterator](): AsyncIterableIterator<
+    Deno.KvEntry<
+      BlobMeta | Uint8Array | Blob | File | ReadableStream<Uint8Array>
+    >
+  > {
+    return this;
   }
 }

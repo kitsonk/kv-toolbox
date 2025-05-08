@@ -2,7 +2,6 @@ import {
   assert,
   assertEquals,
   cleanup,
-  getPath,
   timingSafeEqual,
 } from "./_test_util.ts";
 import { generateKey } from "./crypto.ts";
@@ -12,7 +11,7 @@ import { openKvToolbox } from "./toolbox.ts";
 Deno.test({
   name: "kvToolbox - open and close",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const kv = await openKvToolbox({ path });
     kv.close();
     return cleanup();
@@ -22,7 +21,7 @@ Deno.test({
 Deno.test({
   name: "kvToolbox - get and set functionality",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const kv = await openKvToolbox({ path });
     const result = await kv.set(["key"], "value");
     assert(result.ok);
@@ -37,7 +36,7 @@ Deno.test({
 Deno.test({
   name: "kvToolbox - .keys()",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const kv = await openKvToolbox({ path });
     const res = await kv.atomic()
       .set(["a"], "a")
@@ -84,7 +83,7 @@ Deno.test({
 Deno.test({
   name: "kvToolbox - .query()",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const kv = await openKvToolbox({ path });
     const res = await kv.atomic()
       .set(["a"], "a")
@@ -114,7 +113,7 @@ Deno.test({
 Deno.test({
   name: "kvToolbox - open and close with encryption",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const key = generateKey();
     const kv = await openKvToolbox({ path, encryptWith: key });
     kv.close();
@@ -125,7 +124,7 @@ Deno.test({
 Deno.test({
   name: "kvToolbox - encrypt/decrypt blob - Uint8Array",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const encryptWith = generateKey();
     const kv = await openKvToolbox({ path, encryptWith });
     const value = globalThis.crypto.getRandomValues(new Uint8Array(65_536));
@@ -143,7 +142,7 @@ Deno.test({
 Deno.test({
   name: "kvToolbox - encrypt/decrypt blob - Uint8Array - bypass encryption set",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const encryptWith = generateKey();
     const kv = await openKvToolbox({ path, encryptWith });
     const value = globalThis.crypto.getRandomValues(new Uint8Array(65_536));
@@ -160,7 +159,7 @@ Deno.test({
   name:
     "kvToolbox - encrypt/decrypt blob - Uint8Array - bypass encryption get and set",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const encryptWith = generateKey();
     const kv = await openKvToolbox({ path, encryptWith });
     const value = globalThis.crypto.getRandomValues(new Uint8Array(65_536));
@@ -178,7 +177,7 @@ Deno.test({
 Deno.test({
   name: "kvToolbox - db",
   async fn() {
-    const path = await getPath();
+    const path = ":memory:";
     const kv = await openKvToolbox({ path });
     assert(kv.db instanceof Deno.Kv);
     kv.close();
