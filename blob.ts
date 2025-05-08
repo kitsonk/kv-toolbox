@@ -119,6 +119,9 @@ export interface BlobFileJSON {
   parts: string[];
 }
 
+/**
+ * Options which can be used when calling {@linkcode list}.
+ */
 export interface BlobKvListOptions extends Deno.KvListOptions {
   /**
    * If `true`, the value will be returned as a {@linkcode ReadableStream} of
