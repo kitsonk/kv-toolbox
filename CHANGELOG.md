@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.28.0
+
+- feat: support listing of blobs (84010a4)
+
 ## Version 0.27.4
 
 - fix: uniqueCount handles falsey keyparts properly (ac1d5da)
