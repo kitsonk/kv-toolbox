@@ -155,3 +155,22 @@ Deno.test({
     return teardown();
   },
 });
+
+Deno.test({
+  name: "batched atomic mutate handles many items",
+  async fn() {
+    const kv = await setup();
+    const items = Array
+      .from({ length: 1000 }, (_, index) => index)
+      .map((i) => ({
+        key: [i],
+        value: "x".repeat(2000),
+        type: "set" as const,
+      }));
+    const op = batchedAtomic(kv);
+    op.mutate(...items);
+    const actual = await op.commit();
+    assert(actual.every(({ ok }) => ok));
+    return teardown();
+  },
+});

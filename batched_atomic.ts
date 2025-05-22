@@ -142,7 +142,28 @@ export class BatchedAtomicOperation {
    * {@linkcode Deno.KvMutation}.
    */
   mutate(...mutations: Deno.KvMutation[]): this {
-    return this.#enqueue("mutate", mutations);
+    for (const mutation of mutations) {
+      switch (mutation.type) {
+        case "set":
+          this.set(mutation.key, mutation.value, {
+            expireIn: mutation.expireIn,
+          });
+          break;
+        case "delete":
+          this.delete(mutation.key);
+          break;
+        case "sum":
+          this.sum(mutation.key, mutation.value.value);
+          break;
+        case "max":
+          this.max(mutation.key, mutation.value.value);
+          break;
+        case "min":
+          this.min(mutation.key, mutation.value.value);
+          break;
+      }
+    }
+    return this;
   }
 
   /**
@@ -297,18 +318,7 @@ export class BatchedAtomicOperation {
           hasCheck = true;
         } else {
           mutations++;
-          if (method === "mutate") {
-            for (const mutation of args as Deno.KvMutation[]) {
-              const keyLen = estimateSize(mutation.key);
-              payloadBytes += keyLen;
-              keyBytes += keyLen;
-              if (mutation.type === "set") {
-                payloadBytes += estimateSize(mutation.value);
-              } else if (mutation.type !== "delete") {
-                payloadBytes += 8;
-              }
-            }
-          } else if (method === "max" || method === "min" || method === "sum") {
+          if (method === "max" || method === "min" || method === "sum") {
             const [key] = args as [Deno.KvKey];
             const keyLen = estimateSize(key);
             keyBytes += keyLen;
