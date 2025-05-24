@@ -1,5 +1,10 @@
 # kv-toolbox change log
 
+## Version 0.28.1
+
+- fix: batched_atomic: properly handle multiple mutations (4d02534)
+- docs: BlobKvListOptions (35e6810)
+
 ## Version 0.28.0
 
 - feat: support listing of blobs (84010a4)
