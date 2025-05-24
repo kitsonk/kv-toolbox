@@ -256,6 +256,7 @@ export class BatchedAtomicOperation {
     if (!this.#queue.length) {
       return Promise.resolve([]);
     }
+
     const results: Promise<Deno.KvCommitResult | Deno.KvCommitError>[] = [];
     let checks = 0;
     let mutations = 0;
@@ -263,28 +264,33 @@ export class BatchedAtomicOperation {
     let keyBytes = 0;
     let operation = this.#kv.atomic();
     let hasCheck = false;
+
     while (this.#queue.length) {
       const [method, args] = this.#queue.shift()!;
-      if (method === "setBlob") {
-        const queue = this.#queue;
-        this.#queue = [];
-        const [key, value, options] = args as [
-          Deno.KvKey,
-          ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
-          { expireIn?: number } | undefined,
-        ];
-        const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
-        await setBlob(this, key, value, items.length, options);
-        this.#queue.push(...queue);
-      } else if (method === "deleteBlob") {
-        const [key] = args as [Deno.KvKey];
-        const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
-        for (const item of items) {
-          this.#queue.unshift(["delete", [item]]);
+      switch (method) {
+        case "setBlob": {
+          const queue = this.#queue;
+          this.#queue = [];
+          const [key, value, options] = args as [
+            Deno.KvKey,
+            ArrayBufferLike | ReadableStream<Uint8Array> | Blob,
+            { expireIn?: number } | undefined,
+          ];
+          const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
+          await setBlob(this, key, value, items.length, options);
+          this.#queue.push(...queue);
+          continue;
         }
-        this.#queue.unshift(["delete", [[...key, BLOB_META_KEY]]]);
-      } else {
-        if (method === "check") {
+        case "deleteBlob": {
+          const [key] = args as [Deno.KvKey];
+          const items = await keys(this.#kv, { prefix: [...key, BLOB_KEY] });
+          for (const item of items) {
+            this.#queue.unshift(["delete", [item]]);
+          }
+          this.#queue.unshift(["delete", [[...key, BLOB_META_KEY]]]);
+          continue;
+        }
+        case "check": {
           checks++;
           for (const { key } of args as Deno.AtomicCheck[]) {
             const len = key.reduce(
@@ -295,65 +301,90 @@ export class BatchedAtomicOperation {
             keyBytes += len;
           }
           hasCheck = true;
-        } else {
-          mutations++;
-          if (method === "mutate") {
-            for (const mutation of args as Deno.KvMutation[]) {
-              const keyLen = estimateSize(mutation.key);
-              payloadBytes += keyLen;
-              keyBytes += keyLen;
-              if (mutation.type === "set") {
-                payloadBytes += estimateSize(mutation.value);
-              } else if (mutation.type !== "delete") {
-                payloadBytes += 8;
-              }
-            }
-          } else if (method === "max" || method === "min" || method === "sum") {
-            const [key] = args as [Deno.KvKey];
-            const keyLen = estimateSize(key);
-            keyBytes += keyLen;
-            payloadBytes += keyLen + 8;
-          } else if (method === "set") {
-            const [key, value] = args as [Deno.KvKey, unknown];
-            const keyLen = estimateSize(key);
-            keyBytes += keyLen;
-            payloadBytes += keyLen + estimateSize(value);
-          } else if (method === "delete") {
-            const [key] = args as [Deno.KvKey];
-            const keyLen = estimateSize(key);
-            keyBytes += keyLen;
+          break;
+        }
+        case "mutate": {
+          // if there are multiple mutations, we need to batch them
+          if (args.length > 1) {
+            this.#queue.unshift(
+              ...args.map((mutation) =>
+                [method, [mutation]] as [AtomicOperationKeys, unknown[]]
+              ),
+            );
+            continue;
+          } else {
+            mutations++;
+            const [mutation] = args;
+            const keyLen = estimateSize(mutation.key);
             payloadBytes += keyLen;
-          } else if (method === "enqueue") {
-            const [value] = args as [unknown];
-            payloadBytes += estimateSize(value);
-          }
-        }
-        if (
-          checks > this.#maxChecks || mutations > this.#maxMutations ||
-          payloadBytes > this.#maxBytes || keyBytes > this.#maxKeyBytes
-        ) {
-          const rp = operation.commit();
-          results.push(rp);
-          if (hasCheck) {
-            const result = await rp;
-            if (!result.ok) {
-              break;
+            keyBytes += keyLen;
+            if (mutation.type === "set") {
+              payloadBytes += estimateSize(mutation.value);
+            } else if (mutation.type !== "delete") {
+              payloadBytes += 8;
             }
           }
-          checks = 0;
-          mutations = 0;
-          payloadBytes = 0;
-          keyBytes = 0;
-          operation = this.#kv.atomic();
+          break;
         }
-        // deno-lint-ignore no-explicit-any
-        (operation[method] as any).apply(operation, args);
-        if (!this.#queue.length) {
-          const rp = operation.commit();
-          results.push(rp);
+        case "max":
+        case "min":
+        case "sum": {
+          mutations++;
+          const [key] = args as [Deno.KvKey];
+          const keyLen = estimateSize(key);
+          keyBytes += keyLen;
+          payloadBytes += keyLen + 8;
+          break;
+        }
+        case "set": {
+          mutations++;
+          const [key, value] = args as [Deno.KvKey, unknown];
+          const keyLen = estimateSize(key);
+          keyBytes += keyLen;
+          payloadBytes += keyLen + estimateSize(value);
+          break;
+        }
+        case "delete": {
+          mutations++;
+          const [key] = args as [Deno.KvKey];
+          const keyLen = estimateSize(key);
+          keyBytes += keyLen;
+          payloadBytes += keyLen;
+          break;
+        }
+        case "enqueue": {
+          mutations++;
+          const [value] = args as [unknown];
+          payloadBytes += estimateSize(value);
+          break;
         }
       }
+      // conditionally commit a batch of operations if we have reached
+      // the maximum number of checks, mutations, or payload size
+      // or key size
+      if (
+        checks > this.#maxChecks || mutations > this.#maxMutations ||
+        payloadBytes > this.#maxBytes || keyBytes > this.#maxKeyBytes
+      ) {
+        const rp = operation.commit();
+        results.push(rp);
+        if (hasCheck) {
+          const result = await rp;
+          if (!result.ok) {
+            continue;
+          }
+        }
+        checks = 0;
+        mutations = 0;
+        payloadBytes = 0;
+        keyBytes = 0;
+        operation = this.#kv.atomic();
+      }
+      // deno-lint-ignore no-explicit-any
+      (operation[method] as any).apply(operation, args);
     }
+    const rp = operation.commit();
+    results.push(rp);
     return Promise.all(results);
   }
 }
