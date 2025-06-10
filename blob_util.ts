@@ -327,11 +327,10 @@ export async function removeBlob(kv: Deno.Kv, key: Deno.KvKey) {
 
 const AsyncIterator = Object.getPrototypeOf(async function* () {}).constructor;
 
-export class BlobListIterator extends AsyncIterator
-  implements
-    Deno.KvListIterator<
-      BlobMeta | Uint8Array | Blob | File | ReadableStream<Uint8Array>
-    > {
+export class BlobListIterator extends AsyncIterator implements
+  Deno.KvListIterator<
+    BlobMeta | Uint8Array | Blob | File | ReadableStream<Uint8Array>
+  > {
   #iterator: Deno.KvListIterator<unknown>;
   #count = 0;
   #kv: Deno.Kv;

@@ -71,11 +71,10 @@
 
 - feat: make sizeOf public (738b6bf)
 
-  `sizeOf()` was previously just internal, but it is generally useful when
-  working with Deno KV to be able to estimate the size of keys and values. The
-  Deno KV documentation currently suggests using the length of
-  `JSON.stringify()` string, which can be very problematic when dealing with
-  complex values that don't serialize to JSON but are storable in Deno KV.
+  `sizeOf()` was previously just internal, but it is generally useful when working with Deno KV to be able to estimate
+  the size of keys and values. The Deno KV documentation currently suggests using the length of `JSON.stringify()`
+  string, which can be very problematic when dealing with complex values that don't serialize to JSON but are storable
+  in Deno KV.
 
 ## Version 0.20.1
 
@@ -85,10 +84,9 @@
 
 - feat: arrays, objects, maps and sets are deeply serialized (bf8f285)
 
-  Previously only value supported by JSON directly were serialized as values and
-  keys of arrays, objects, maps and sets. While kv-toolbox can deserialize the
-  old format, it supports a new JSON format that allows all value supported by
-  Deno KV to be properly serialized and deserialized.
+  Previously only value supported by JSON directly were serialized as values and keys of arrays, objects, maps and sets.
+  While kv-toolbox can deserialize the old format, it supports a new JSON format that allows all value supported by Deno
+  KV to be properly serialized and deserialized.
 
 - docs: update changelog (38bd7cd)
 
@@ -141,29 +139,25 @@
 
 - feat: re-work batching for batchedAtomic to align to current Deno KV (e3c8136)
 
-  `batchedAtomic()` now aligns to current versions of Deno KV in how it decides
-  where to _segment_ atomic transactions. Because of the much higher increases
-  users should consider only using `batchedAtomic()` when dealing with
-  potentially large transactions where potentially failing due to the size
-  restriction is awkward or difficult.
+  `batchedAtomic()` now aligns to current versions of Deno KV in how it decides where to _segment_ atomic transactions.
+  Because of the much higher increases users should consider only using `batchedAtomic()` when dealing with potentially
+  large transactions where potentially failing due to the size restriction is awkward or difficult.
 
 - feat: align blob set and get to Deno.Kv APIs (923faf1)
 
-  **BREAKING** Previously `set()` resolved with void and `get()` resolved with a
-  value or `null`. In addition, `getMeta()` resolved with a value.
+  **BREAKING** Previously `set()` resolved with void and `get()` resolved with a value or `null`. In addition,
+  `getMeta()` resolved with a value.
 
-  Now `set()` resolves with a `Deno.KvCommitResult` and `get()` and `getMeta()`
-  resolve with a `Deno.KvEntryMaybe` with the appropriate type.
+  Now `set()` resolves with a `Deno.KvCommitResult` and `get()` and `getMeta()` resolve with a `Deno.KvEntryMaybe` with
+  the appropriate type.
 
 - feat: add support for checking blobs in batched_atomic (389730a)
 
-  `batchedAtomic()` transactions now support `.checkBlob()` checks as part of an
-  atomic transaction.
+  `batchedAtomic()` transactions now support `.checkBlob()` checks as part of an atomic transaction.
 
 - feat: add `getAsResponse()` to blob (796ed64)
 
-  `getAsResponse()` will retrieve a blob entry as a `Response` which will stream
-  the blob from the store to a client.
+  `getAsResponse()` will retrieve a blob entry as a `Response` which will stream the blob from the store to a client.
 
 - chore: linting in blob_util (bd6b888)
 - docs: update readme about batchAtomic (bca0fb6)

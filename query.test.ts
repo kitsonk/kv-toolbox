@@ -1,7 +1,9 @@
 import { assert } from "@std/assert/assert";
 import { assertEquals } from "@std/assert/equals";
 import { assertThrows } from "@std/assert/throws";
+import { timingSafeEqual } from "@std/crypto/timing-safe-equal";
 
+import { set } from "./blob.ts";
 import { Filter, PropertyPath, Query, query } from "./query.ts";
 
 Deno.test("PropertyPath - exists", () => {
@@ -535,4 +537,102 @@ Deno.test("Query - limit API", async () => {
     .keys();
   assertEquals(result, [["a", "b"], ["a", "b", "c"]]);
   db.close();
+});
+
+Deno.test({
+  name: "query - blob with limit",
+  async fn() {
+    const kv = await Deno.openKv(":memory:");
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(query(kv, { prefix: ["hello"] }, { limit: 2, meta: true }).get());
+    assertEquals(entries.length, 2);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assertEquals(entry.value, { kind: "buffer", size: 3 });
+    }
+    kv.close();
+  },
+});
+
+Deno.test({
+  name: "query - blob as meta",
+  async fn() {
+    const kv = await Deno.openKv(":memory:");
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(query(kv, { prefix: ["hello"] }, { meta: true }).get());
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assertEquals(entry.value, { kind: "buffer", size: 3 });
+    }
+    kv.close();
+  },
+});
+
+Deno.test({
+  name: "query - blob as bytes",
+  async fn() {
+    const kv = await Deno.openKv(":memory:");
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(query(kv, { prefix: ["hello"] }, { bytes: true }).get());
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assert(timingSafeEqual(entry.value, new Uint8Array([1, 2, 3])));
+    }
+    kv.close();
+  },
+});
+
+Deno.test({
+  name: "query - blob as blob",
+  async fn() {
+    const kv = await Deno.openKv(":memory:");
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(query(kv, { prefix: ["hello"] }, { blob: true }).get());
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assert(entry.value instanceof Blob);
+      assert(
+        timingSafeEqual(await entry.value.bytes(), new Uint8Array([1, 2, 3])),
+      );
+    }
+    kv.close();
+  },
+});
+
+Deno.test({
+  name: "query - blob as stream",
+  async fn() {
+    const kv = await Deno.openKv(":memory:");
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const entries = await Array.fromAsync(query(kv, { prefix: ["hello"] }, { stream: true }).get());
+    assertEquals(entries.length, 3);
+    for (const [idx, entry] of entries.entries()) {
+      assertEquals(entry.key, ["hello", idx + 1]);
+      assert(entry.value instanceof ReadableStream);
+    }
+    kv.close();
+  },
 });

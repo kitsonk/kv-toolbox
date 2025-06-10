@@ -189,9 +189,7 @@ async function asJSON(
 }
 
 function toParts(blob: ArrayBufferLike | ArrayBufferView): string[] {
-  const buffer = ArrayBuffer.isView(blob)
-    ? new Uint8Array(blob.buffer)
-    : new Uint8Array(blob);
+  const buffer = ArrayBuffer.isView(blob) ? new Uint8Array(blob.buffer) : new Uint8Array(blob);
   const parts: string[] = [];
   let offset = 0;
   while (buffer.byteLength > offset) {
@@ -539,13 +537,7 @@ export function list(
   if ([stream, blob, bytes, meta].filter(Boolean).length > 1) {
     throw new TypeError("Cannot set multiple value types as once.");
   }
-  const valueKind = stream
-    ? "stream"
-    : blob
-    ? "blob"
-    : bytes
-    ? "bytes"
-    : "meta";
+  const valueKind = stream ? "stream" : blob ? "blob" : bytes ? "bytes" : "meta";
   return new BlobListIterator(kv, selector, options, valueKind);
 }
 
@@ -704,8 +696,7 @@ export async function getAsResponse(
     });
   }
   const headers = new Headers(options.headers);
-  const contentType =
-    (maybeMeta.value.kind !== "buffer" && maybeMeta.value.type) ||
+  const contentType = (maybeMeta.value.kind !== "buffer" && maybeMeta.value.type) ||
     "application/octet-stream";
   headers.set("content-type", contentType);
   if (maybeMeta.value.size) {

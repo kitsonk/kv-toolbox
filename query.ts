@@ -4,25 +4,34 @@
  * @module
  */
 
-import {
-  keyToJSON,
-  type KvKeyJSON,
-  type KvValueJSON,
-  toKey,
-  toValue,
-  valueToJSON,
-} from "@deno/kv-utils/json";
+import { keyToJSON, type KvKeyJSON, type KvValueJSON, toKey, toValue, valueToJSON } from "@deno/kv-utils/json";
 import { equal } from "@std/assert/equal";
 import { assert } from "@std/assert/assert";
 
-import {
-  keys,
-  type KeyTree,
-  tree,
-  unique,
-  uniqueCount,
-  type UniqueCountElement,
-} from "./keys.ts";
+import { type BlobMeta, list } from "./blob.ts";
+import { keys, type KeyTree, tree, unique, uniqueCount, type UniqueCountElement } from "./keys.ts";
+
+/**
+ * Options which can be used when calling {@linkcode query}.
+ */
+export interface QueryOptions extends Deno.KvListOptions {
+  /**
+   * If `true`, only blob entries will be returned as a {@linkcode ReadableStream} of {@linkcode Uint8Array} chunks.
+   */
+  stream?: boolean;
+  /**
+   * If `true`, only blob entries will be returned as a {@linkcode Blob} or {@linkcode File}.
+   */
+  blob?: boolean;
+  /**
+   * If `true`, only blob entries will be returned as a {@linkcode Uint8Array}.
+   */
+  bytes?: boolean;
+  /**
+   * If `true`, only blob entries will be returned as a {@linkcode BlobMeta} object.
+   */
+  meta?: boolean;
+}
 
 /**
  * The supported operations for filtering entries.
@@ -241,6 +250,11 @@ function hasProperty(obj: Mappable, key: string): boolean {
     return obj.has(key);
   }
   return key in obj;
+}
+
+function isOptionBlob(options: QueryOptions): boolean {
+  return options.blob || options.stream || options.bytes || options.meta ||
+    false;
 }
 
 function isMappable(value: unknown): value is Mappable {
@@ -553,9 +567,7 @@ export class Filter {
         assert(this.#operation);
         return {
           kind: "where",
-          property: this.#property instanceof PropertyPath
-            ? this.#property.toJSON()
-            : this.#property,
+          property: this.#property instanceof PropertyPath ? this.#property.toJSON() : this.#property,
           operation: this.#operation,
           value: valueToJSON(this.#value),
         };
@@ -784,9 +796,7 @@ export class Filter {
         return Filter.or(...json.filters.map(Filter.parse));
       case "where":
         return Filter.where(
-          Array.isArray(json.property)
-            ? PropertyPath.from(json.property)
-            : json.property,
+          Array.isArray(json.property) ? PropertyPath.from(json.property) : json.property,
           json.operation,
           toValue(json.value),
         );
@@ -798,8 +808,7 @@ export class Filter {
 
 const AsyncIterator = Object.getPrototypeOf(async function* () {}).constructor;
 
-class QueryListIterator<T = unknown> extends AsyncIterator
-  implements Deno.KvListIterator<T> {
+class QueryListIterator<T = unknown> extends AsyncIterator implements Deno.KvListIterator<T> {
   #iterator: Deno.KvListIterator<T>;
   #count = 0;
   #limit?: number;
@@ -845,7 +854,7 @@ export class Query<T = unknown> implements QueryLike<T> {
   #kv: Deno.Kv;
   #limit?: number;
   #selector: Deno.KvListSelector;
-  #options: Deno.KvListOptions;
+  #options: QueryOptions;
   #query: Filter[] = [];
 
   /**
@@ -858,7 +867,7 @@ export class Query<T = unknown> implements QueryLike<T> {
   constructor(
     kv: Deno.Kv,
     selector: Deno.KvListSelector,
-    options: Deno.KvListOptions = {},
+    options: QueryOptions = {},
   ) {
     this.#kv = kv;
     this.#selector = selector;
@@ -909,11 +918,11 @@ export class Query<T = unknown> implements QueryLike<T> {
    * Get the entries that match the query conditions.
    */
   get(): Deno.KvListIterator<T> {
-    return new QueryListIterator<T>(
-      this.#kv.list<T>(this.#selector, this.#options),
-      this.#query,
-      this.#limit,
-    );
+    const iterator =
+      (isOptionBlob(this.#options)
+        ? list(this.#kv, this.#selector, this.#options)
+        : this.#kv.list<T>(this.#selector, this.#options)) as Deno.KvListIterator<T>;
+    return new QueryListIterator<T>(iterator, this.#query, this.#limit);
   }
 
   /**
@@ -1279,6 +1288,146 @@ export class Query<T = unknown> implements QueryLike<T> {
  * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
  * with the added ability to filter entries based on the query conditions.
  *
+ * @example Querying blob entries as `ReadableStream<Uint8Array>` values
+ *
+ * ```ts
+ * import { query } from "@kitsonk/kv-toolbox/query";
+ * const db = await Deno.openKv();
+ * const result = query(db, { prefix: [] }, { stream: true })
+ *   .get();
+ * for await (const entry of result) {
+ *   console.log(entry);
+ * }
+ * db.close();
+ * ```
+ *
+ * @template T the type of the value stored in the {@linkcode Deno.Kv} instance
+ * @param kv the target {@linkcode Deno.Kv} instance
+ * @param selector the selector to use for selecting entries
+ * @param options
+ * @returns
+ */
+export function query(
+  kv: Deno.Kv,
+  selector: Deno.KvListSelector,
+  options: QueryOptions & { stream: true },
+): Query<ReadableStream<Uint8Array>>;
+/**
+ * Query/filter entries from a {@linkcode Deno.Kv} instance.
+ *
+ * The query instance can be used to filter entries based on a set of
+ * conditions. Then the filtered entries can be retrieved using the `.get()`
+ * method, which returns an async iterator that will yield the entries that
+ * match the conditions.
+ *
+ * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+ * with the added ability to filter entries based on the query conditions.
+ *
+ * @example Querying blob entries as `Blob` or `File` values
+ *
+ * ```ts
+ * import { query } from "@kitsonk/kv-toolbox/query";
+ * const db = await Deno.openKv();
+ * const result = query(db, { prefix: [] }, { blob: true })
+ *   .get();
+ * for await (const entry of result) {
+ *   console.log(entry);
+ * }
+ * db.close();
+ * ```
+ *
+ * @template T the type of the value stored in the {@linkcode Deno.Kv} instance
+ * @param kv the target {@linkcode Deno.Kv} instance
+ * @param selector the selector to use for selecting entries
+ * @param options
+ * @returns
+ */
+export function query(
+  kv: Deno.Kv,
+  selector: Deno.KvListSelector,
+  options: QueryOptions & { blob: true },
+): Query<Blob | File>;
+/**
+ * Query/filter entries from a {@linkcode Deno.Kv} instance.
+ *
+ * The query instance can be used to filter entries based on a set of
+ * conditions. Then the filtered entries can be retrieved using the `.get()`
+ * method, which returns an async iterator that will yield the entries that
+ * match the conditions.
+ *
+ * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+ * with the added ability to filter entries based on the query conditions.
+ *
+ * @example Querying blob entries as `Uint8Array` values
+ *
+ * ```ts
+ * import { query } from "@kitsonk/kv-toolbox/query";
+ * const db = await Deno.openKv();
+ * const result = query(db, { prefix: [] }, { bytes: true })
+ *   .get();
+ * for await (const entry of result) {
+ *   console.log(entry);
+ * }
+ * db.close();
+ * ```
+ *
+ * @template T the type of the value stored in the {@linkcode Deno.Kv} instance
+ * @param kv the target {@linkcode Deno.Kv} instance
+ * @param selector the selector to use for selecting entries
+ * @param options
+ * @returns
+ */
+export function query(
+  kv: Deno.Kv,
+  selector: Deno.KvListSelector,
+  options: QueryOptions & { bytes: true },
+): Query<Uint8Array>;
+/**
+ * Query/filter entries from a {@linkcode Deno.Kv} instance.
+ *
+ * The query instance can be used to filter entries based on a set of
+ * conditions. Then the filtered entries can be retrieved using the `.get()`
+ * method, which returns an async iterator that will yield the entries that
+ * match the conditions.
+ *
+ * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+ * with the added ability to filter entries based on the query conditions.
+ *
+ * @example Querying blob entries as `BlobMeta` values
+ *
+ * ```ts
+ * import { query } from "@kitsonk/kv-toolbox/query";
+ * const db = await Deno.openKv();
+ * const result = query(db, { prefix: [] }, { meta: true })
+ *   .get();
+ * for await (const entry of result) {
+ *   console.log(entry);
+ * }
+ * db.close();
+ * ```
+ *
+ * @template T the type of the value stored in the {@linkcode Deno.Kv} instance
+ * @param kv the target {@linkcode Deno.Kv} instance
+ * @param selector the selector to use for selecting entries
+ * @param options
+ * @returns
+ */
+export function query(
+  kv: Deno.Kv,
+  selector: Deno.KvListSelector,
+  options: QueryOptions & { meta: true },
+): Query<BlobMeta>;
+/**
+ * Query/filter entries from a {@linkcode Deno.Kv} instance.
+ *
+ * The query instance can be used to filter entries based on a set of
+ * conditions. Then the filtered entries can be retrieved using the `.get()`
+ * method, which returns an async iterator that will yield the entries that
+ * match the conditions.
+ *
+ * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+ * with the added ability to filter entries based on the query conditions.
+ *
  * @example Filtering entries based on a property value
  *
  * ```ts
@@ -1333,10 +1482,7 @@ export class Query<T = unknown> implements QueryLike<T> {
  * @param options
  * @returns
  */
-export function query<T = unknown>(
-  kv: Deno.Kv,
-  selector: Deno.KvListSelector,
-  options?: Deno.KvListOptions,
-): Query<T> {
+export function query<T = unknown>(kv: Deno.Kv, selector: Deno.KvListSelector, options?: QueryOptions): Query<T>;
+export function query<T = unknown>(kv: Deno.Kv, selector: Deno.KvListSelector, options: QueryOptions = {}): Query<T> {
   return new Query(kv, selector, options);
 }

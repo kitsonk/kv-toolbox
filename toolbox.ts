@@ -88,11 +88,7 @@ import {
   type ImportEntriesResult,
 } from "@deno/kv-utils/import-export";
 
-import {
-  type BatchAtomicOptions,
-  batchedAtomic,
-  type BatchedAtomicOperation,
-} from "./batched_atomic.ts";
+import { type BatchAtomicOptions, batchedAtomic, type BatchedAtomicOperation } from "./batched_atomic.ts";
 import {
   type BlobJSON,
   type BlobKvListOptions,
@@ -107,20 +103,10 @@ import {
 } from "./blob.ts";
 import { removeBlob } from "./blob_util.ts";
 import { CryptoKv, type Encryptor } from "./crypto.ts";
-import {
-  keys,
-  type KeyTree,
-  tree,
-  unique,
-  uniqueCount,
-  type UniqueCountElement,
-} from "./keys.ts";
-import { type Query, query } from "./query.ts";
+import { keys, type KeyTree, tree, unique, uniqueCount, type UniqueCountElement } from "./keys.ts";
+import { type Query, query, type QueryOptions } from "./query.ts";
 
-export type {
-  BatchAtomicOptions,
-  BatchedAtomicOperation,
-} from "./batched_atomic.ts";
+export type { BatchAtomicOptions, BatchedAtomicOperation } from "./batched_atomic.ts";
 export type { BlobJSON, BlobKvListOptions, BlobMeta } from "./blob.ts";
 export { type Encryptor, generateKey } from "./crypto.ts";
 export type { KeyTree, UniqueCountElement } from "./keys.ts";
@@ -517,9 +503,7 @@ export class KvToolbox implements Disposable {
     },
   ): Promise<Blob | File | BlobJSON | Response | null> {
     return options?.response
-      ? options?.json
-        ? getAsJSON(this.#kv, key, options)
-        : getAsResponse(this.#kv, key, options)
+      ? options?.json ? getAsJSON(this.#kv, key, options) : getAsResponse(this.#kv, key, options)
       : getAsBlob(this.#kv, key, options);
   }
 
@@ -1007,6 +991,110 @@ export class KvToolbox implements Disposable {
    * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
    * with the added ability to filter entries based on the query conditions.
    *
+   * @example Querying blob values as `ReadableStream<Uint8Array>`
+   *
+   * ```ts
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   * const result = kv.query({ prefix: [] }, { stream: true })
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * kv.close();
+   * ```
+   */
+  query(selector: Deno.KvListSelector, options: QueryOptions & { stream: true }): Query<ReadableStream<Uint8Array>>;
+  /**
+   * @param selector Query/filter entries from a {@linkcode Deno.Kv} instance.
+   *
+   * The query instance can be used to filter entries based on a set of
+   * conditions. Then the filtered entries can be retrieved using the `.get()`
+   * method, which returns an async iterator that will yield the entries that
+   * match the conditions.
+   *
+   * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+   * with the added ability to filter entries based on the query conditions.
+   *
+   * @example Querying blob values as `Blob` or `File`
+   *
+   * ```ts
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   * const result = kv.query({ prefix: [] }, { blob: true })
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * kv.close();
+   * ```
+   */
+  query(selector: Deno.KvListSelector, options: QueryOptions & { blob: true }): Query<Blob | File>;
+  /**
+   * @param selector Query/filter entries from a {@linkcode Deno.Kv} instance.
+   *
+   * The query instance can be used to filter entries based on a set of
+   * conditions. Then the filtered entries can be retrieved using the `.get()`
+   * method, which returns an async iterator that will yield the entries that
+   * match the conditions.
+   *
+   * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+   * with the added ability to filter entries based on the query conditions.
+   *
+   * @example Querying blob values as `Uint8Array`
+   *
+   * ```ts
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   * const result = kv.query({ prefix: [] }, { bytes: true })
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * kv.close();
+   * ```
+   */
+  query(selector: Deno.KvListSelector, options: QueryOptions & { bytes: true }): Query<Uint8Array>;
+  /**
+   * @param selector Query/filter entries from a {@linkcode Deno.Kv} instance.
+   *
+   * The query instance can be used to filter entries based on a set of
+   * conditions. Then the filtered entries can be retrieved using the `.get()`
+   * method, which returns an async iterator that will yield the entries that
+   * match the conditions.
+   *
+   * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+   * with the added ability to filter entries based on the query conditions.
+   *
+   * @example Querying blob values as `BlobMeta`
+   *
+   * ```ts
+   * import { openKvToolbox } from "@kitsonk/kv-toolbox";
+   *
+   * const kv = await openKvToolbox();
+   * const result = kv.query({ prefix: [] }, { meta: true })
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry);
+   * }
+   * kv.close();
+   * ```
+   */
+  query(selector: Deno.KvListSelector, options: QueryOptions & { meta: true }): Query<BlobMeta>;
+  /**
+   * @param selector Query/filter entries from a {@linkcode Deno.Kv} instance.
+   *
+   * The query instance can be used to filter entries based on a set of
+   * conditions. Then the filtered entries can be retrieved using the `.get()`
+   * method, which returns an async iterator that will yield the entries that
+   * match the conditions.
+   *
+   * At a base level a query works like the `Deno.Kv.prototype.list()` method, but
+   * with the added ability to filter entries based on the query conditions.
+   *
    * @example Filtering entries based on a property value
    *
    * ```ts
@@ -1056,10 +1144,8 @@ export class KvToolbox implements Disposable {
    * kv.close();
    * ```
    */
-  query<T = unknown>(
-    selector: Deno.KvListSelector,
-    options?: Deno.KvListOptions,
-  ): Query<T> {
+  query<T = unknown>(selector: Deno.KvListSelector, options?: QueryOptions): Query<T>;
+  query<T = unknown>(selector: Deno.KvListSelector, options: QueryOptions = {}): Query<T> {
     return query<T>(this.#kv, selector, options);
   }
 
@@ -1443,9 +1529,7 @@ export class CryptoKvToolbox extends KvToolbox {
     if (options.encrypted !== false && options.stream) {
       throw new TypeError("Encrypted blobs cannot be retrieved as streams.");
     }
-    return options.encrypted === false
-      ? super.getBlob(key, options)
-      : this.#cryptoKv.getBlob(key, options);
+    return options.encrypted === false ? super.getBlob(key, options) : this.#cryptoKv.getBlob(key, options);
   }
 
   /**
@@ -1624,9 +1708,7 @@ export class CryptoKvToolbox extends KvToolbox {
       encrypted?: boolean | undefined;
     } | undefined = {},
   ): Promise<Deno.KvEntryMaybe<BlobMeta>> {
-    return options.encrypted === false
-      ? super.getMeta(key, options)
-      : this.#cryptoKv.getBlobMeta(key, options);
+    return options.encrypted === false ? super.getMeta(key, options) : this.#cryptoKv.getBlobMeta(key, options);
   }
 
   /**
@@ -1791,7 +1873,5 @@ export async function openKvToolbox(
   },
 ): Promise<KvToolbox | CryptoKvToolbox> {
   const kv = await Deno.openKv(options?.path);
-  return options?.encryptWith
-    ? new CryptoKvToolbox(kv, options.encryptWith)
-    : new KvToolbox(kv);
+  return options?.encryptWith ? new CryptoKvToolbox(kv, options.encryptWith) : new KvToolbox(kv);
 }

@@ -2,15 +2,7 @@ import { assert, assertEquals, setup, teardown } from "./_test_util.ts";
 import { batchedAtomic } from "./batched_atomic.ts";
 import { Filter, query } from "./query.ts";
 
-import {
-  equals,
-  keys,
-  partEquals,
-  startsWith,
-  tree,
-  unique,
-  uniqueCount,
-} from "./keys.ts";
+import { equals, keys, partEquals, startsWith, tree, unique, uniqueCount } from "./keys.ts";
 
 Deno.test({
   name: "keys - returns a list of keys",
@@ -149,8 +141,7 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "uniqueCount - returns a count when there is only a single subkey that is falsy",
+  name: "uniqueCount - returns a count when there is only a single subkey that is falsy",
   async fn() {
     const kv = await setup();
     const res = await kv.atomic()

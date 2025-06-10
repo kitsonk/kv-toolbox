@@ -306,9 +306,7 @@ export async function keys(
   selector?: Deno.KvListSelector,
   options?: Deno.KvListOptions,
 ): Promise<Deno.KvKey[]> {
-  const list = queryOrKv instanceof Deno.Kv
-    ? queryOrKv.list(selector!, options)
-    : queryOrKv.get();
+  const list = queryOrKv instanceof Deno.Kv ? queryOrKv.list(selector!, options) : queryOrKv.get();
   const keys: Deno.KvKey[] = [];
   for await (const { key } of list) {
     keys.push(key);
@@ -396,12 +394,8 @@ export async function unique(
   prefix: Deno.KvKey = [],
   options?: Deno.KvListOptions,
 ): Promise<Deno.KvKey[]> {
-  prefix = queryOrKv instanceof Deno.Kv
-    ? prefix
-    : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
-  const list = queryOrKv instanceof Deno.Kv
-    ? queryOrKv.list({ prefix }, options)
-    : queryOrKv.get();
+  prefix = queryOrKv instanceof Deno.Kv ? prefix : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
+  const list = queryOrKv instanceof Deno.Kv ? queryOrKv.list({ prefix }, options) : queryOrKv.get();
   const prefixLength = prefix.length;
   const prefixes = new Set<Deno.KvKeyPart>();
   for await (const { key } of list) {
@@ -517,12 +511,8 @@ export async function uniqueCount(
   prefix: Deno.KvKey = [],
   options?: Deno.KvListOptions,
 ): Promise<UniqueCountElement[]> {
-  prefix = queryOrKv instanceof Deno.Kv
-    ? prefix
-    : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
-  const list = queryOrKv instanceof Deno.Kv
-    ? queryOrKv.list({ prefix }, options)
-    : queryOrKv.get();
+  prefix = queryOrKv instanceof Deno.Kv ? prefix : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
+  const list = queryOrKv instanceof Deno.Kv ? queryOrKv.list({ prefix }, options) : queryOrKv.get();
   const prefixLength = prefix.length;
   const prefixCounts = new Map<
     Deno.KvKeyPart,
@@ -686,14 +676,10 @@ export async function tree(
   prefix: Deno.KvKey = [],
   options?: Deno.KvListOptions,
 ): Promise<KeyTree> {
-  prefix = queryOrKv instanceof Deno.Kv
-    ? prefix
-    : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
+  prefix = queryOrKv instanceof Deno.Kv ? prefix : (queryOrKv.selector as { prefix?: Deno.KvKey }).prefix ?? prefix;
   const root: KeyTree = prefix.length ? { prefix: [...prefix] } : {};
   const prefixLength = prefix.length;
-  const list = queryOrKv instanceof Deno.Kv
-    ? queryOrKv.list({ prefix }, options)
-    : queryOrKv.get();
+  const list = queryOrKv instanceof Deno.Kv ? queryOrKv.list({ prefix }, options) : queryOrKv.get();
   for await (const { key } of list) {
     if (!root.children) {
       root.children = [];

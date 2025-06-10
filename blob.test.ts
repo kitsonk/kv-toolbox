@@ -1,12 +1,4 @@
-import {
-  assert,
-  assertEquals,
-  assertRejects,
-  assertThrows,
-  setup,
-  teardown,
-  timingSafeEqual,
-} from "./_test_util.ts";
+import { assert, assertEquals, assertRejects, assertThrows, setup, teardown, timingSafeEqual } from "./_test_util.ts";
 
 import {
   get,

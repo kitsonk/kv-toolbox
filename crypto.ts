@@ -37,13 +37,7 @@ import { concat } from "@std/bytes/concat";
 
 import { batchedAtomic } from "./batched_atomic.ts";
 import { BLOB_KEY, type BlobJSON, type BlobMeta, toJSON } from "./blob.ts";
-import {
-  asMeta,
-  asUint8Array,
-  BATCH_SIZE,
-  removeBlob,
-  setBlob,
-} from "./blob_util.ts";
+import { asMeta, asUint8Array, BATCH_SIZE, removeBlob, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
 
 /** Valid data types that can be used when supplying an encryption key. */

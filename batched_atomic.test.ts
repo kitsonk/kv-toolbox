@@ -1,11 +1,4 @@
-import {
-  assert,
-  assertEquals,
-  assertNotEquals,
-  delay,
-  setup,
-  teardown,
-} from "./_test_util.ts";
+import { assert, assertEquals, assertNotEquals, delay, setup, teardown } from "./_test_util.ts";
 import { keys } from "./keys.ts";
 
 import { batchedAtomic } from "./batched_atomic.ts";

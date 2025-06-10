@@ -1,10 +1,4 @@
-import {
-  assert,
-  assertEquals,
-  setup,
-  teardown,
-  timingSafeEqual,
-} from "./_test_util.ts";
+import { assert, assertEquals, setup, teardown, timingSafeEqual } from "./_test_util.ts";
 
 import { CryptoKv, generateKey } from "./crypto.ts";
 
@@ -31,8 +25,7 @@ Deno.test({
     const kv = await setup();
     const key = generateKey();
     const cryptoKv = new CryptoKv(kv, key);
-    const value =
-      globalThis.crypto.getRandomValues(new Uint8Array(65_536)).buffer;
+    const value = globalThis.crypto.getRandomValues(new Uint8Array(65_536)).buffer;
     const res = await cryptoKv.setBlob(["example"], value);
     assert(res.ok);
     const actual = await cryptoKv.getBlob(["example"]);

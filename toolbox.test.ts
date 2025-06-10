@@ -1,9 +1,4 @@
-import {
-  assert,
-  assertEquals,
-  cleanup,
-  timingSafeEqual,
-} from "./_test_util.ts";
+import { assert, assertEquals, cleanup, timingSafeEqual } from "./_test_util.ts";
 import { generateKey } from "./crypto.ts";
 
 import { openKvToolbox } from "./toolbox.ts";
@@ -156,8 +151,7 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "kvToolbox - encrypt/decrypt blob - Uint8Array - bypass encryption get and set",
+  name: "kvToolbox - encrypt/decrypt blob - Uint8Array - bypass encryption get and set",
   async fn() {
     const path = ":memory:";
     const encryptWith = generateKey();

@@ -307,9 +307,7 @@ export class BatchedAtomicOperation {
           // if there are multiple mutations, we need to batch them
           if (args.length > 1) {
             this.#queue.unshift(
-              ...args.map((mutation) =>
-                [method, [mutation]] as [AtomicOperationKeys, unknown[]]
-              ),
+              ...args.map((mutation) => [method, [mutation]] as [AtomicOperationKeys, unknown[]]),
             );
             continue;
           } else {
