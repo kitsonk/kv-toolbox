@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.29.0
+
+- feat: add blob support to query (f5dae8a)
+
 ## Version 0.28.1
 
 - fix: batched_atomic: properly handle multiple mutations (4d02534)
