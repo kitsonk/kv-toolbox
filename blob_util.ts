@@ -333,13 +333,17 @@ export class BlobListIterator extends AsyncIterator implements
   > {
   #iterator: Deno.KvListIterator<unknown>;
   #count = 0;
+  #cursor?: string;
   #kv: Deno.Kv;
   #limit?: number;
   #options: Deno.KvListOptions;
   #valueKind: "meta" | "bytes" | "blob" | "stream";
 
   get cursor(): string {
-    return this.#iterator.cursor;
+    if (!this.#cursor) {
+      throw new Error("Cannot get cursor before first iteration");
+    }
+    return this.#cursor;
   }
 
   constructor(
@@ -371,6 +375,7 @@ export class BlobListIterator extends AsyncIterator implements
         if (this.#limit && this.#count > this.#limit) {
           break;
         }
+        this.#cursor = this.#iterator.cursor;
         const key: Deno.KvKey = entry.key.slice(0, -1);
         if (this.#valueKind === "meta") {
           return {

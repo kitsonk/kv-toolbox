@@ -539,6 +539,32 @@ Deno.test("Query - limit API", async () => {
   db.close();
 });
 
+Deno.test("Query - with cursor", async () => {
+  const db = await Deno.openKv(":memory:");
+  await db
+    .atomic()
+    .set(["a", "b"], { age: 10 })
+    .set(["a", "b", "c"], { age: 10 })
+    .set(["a", "d", "e"], { age: 10 })
+    .set(["a", "d", "f"], { age: 10 })
+    .set(["a", "g"], { age: 20 })
+    .set(["b", "h"], { age: 10 })
+    .commit();
+  const iterator = query(db, { prefix: [] }, { limit: 2 })
+    .where("age", "==", 10)
+    .get();
+  const result = await Array.fromAsync(iterator);
+  assertEquals(result.length, 2);
+  const iterator2 = query(db, { prefix: [] }, { limit: 2, cursor: iterator.cursor })
+    .where("age", "==", 10)
+    .get();
+  const result2 = await Array.fromAsync(iterator2);
+  assertEquals(result2.length, 2);
+  assertEquals(result2[0].key, ["a", "d", "e"]);
+  assertEquals(result2[1].key, ["a", "d", "f"]);
+  db.close();
+});
+
 Deno.test({
   name: "query - blob with limit",
   async fn() {

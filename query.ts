@@ -811,11 +811,15 @@ const AsyncIterator = Object.getPrototypeOf(async function* () {}).constructor;
 class QueryListIterator<T = unknown> extends AsyncIterator implements Deno.KvListIterator<T> {
   #iterator: Deno.KvListIterator<T>;
   #count = 0;
+  #cursor?: string;
   #limit?: number;
   #query: Filter[];
 
   get cursor(): string {
-    return this.#iterator.cursor;
+    if (!this.#cursor) {
+      throw new Error("Cannot get cursor before first iteration");
+    }
+    return this.#cursor;
   }
 
   constructor(
@@ -836,6 +840,7 @@ class QueryListIterator<T = unknown> extends AsyncIterator implements Deno.KvLis
         if (this.#limit && this.#count > this.#limit) {
           return { value: undefined, done: true };
         }
+        this.#cursor = this.#iterator.cursor;
         return { value: entry, done: false };
       }
     }

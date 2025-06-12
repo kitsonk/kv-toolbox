@@ -465,6 +465,27 @@ Deno.test({
 });
 
 Deno.test({
+  name: "list - with cursor",
+  async fn() {
+    const kv = await setup();
+    await set(kv, ["hello", 1], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 2], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello", 3], new Uint8Array([1, 2, 3]));
+    await set(kv, ["hello"], new Uint8Array([1, 2, 3]));
+    await set(kv, ["world"], new Uint8Array([1, 2, 3]));
+    const iterator = list(kv, { prefix: ["hello"] }, { limit: 2 });
+    const entries = await Array.fromAsync(iterator);
+    assertEquals(entries.length, 2);
+    const iterator2 = list(kv, { prefix: ["hello"] }, { limit: 2, cursor: iterator.cursor });
+    const entries2 = await Array.fromAsync(iterator2);
+    assertEquals(entries2.length, 1);
+    assertEquals(entries2[0].key, ["hello", 3]);
+    assertEquals(entries2[0].value, { kind: "buffer", size: 3 });
+    return teardown();
+  },
+});
+
+Deno.test({
   name: "list - meta",
   async fn() {
     const kv = await setup();
