@@ -1,5 +1,9 @@
 # kv-toolbox change log
 
+## Version 0.29.1
+
+- fix: cursors with query and blob lists (04b8f66)
+
 ## Version 0.29.0
 
 - feat: add blob support to query (f5dae8a)
