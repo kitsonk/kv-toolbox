@@ -355,9 +355,9 @@ export class BlobListIterator extends AsyncIterator implements
     super();
     this.#kv = kv;
     this.#valueKind = valueKind;
-    const { limit, ...optionsRest } = options;
+    const { limit, cursor, ...optionsRest } = options;
     this.#options = optionsRest;
-    this.#iterator = kv.list<BlobMeta>(prefix, optionsRest);
+    this.#iterator = kv.list<BlobMeta>(prefix, { cursor, ...optionsRest });
     this.#limit = limit;
   }
 
