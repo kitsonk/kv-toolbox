@@ -1,5 +1,10 @@
 # kv-toolbox change log
 
+## Version 0.30.0
+
+- fix: allow batch_atomic to load in browsers (73bed39)
+- chore: update deps (3568a43)
+
 ## Version 0.29.2
 
 - fix: issue with cursors and blobs (74467f9)
