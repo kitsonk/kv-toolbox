@@ -71,8 +71,7 @@
  *
  * Parts of `kv-toolbox` were contributed to the
  * [`@deno/kv-utils`](https://jsr.io/@deno/kv-utils) package, like specifically
- * the JSON serialization, the ability to estimate the size of keys and
- * values, and the ability to import and export to NDJSON.
+ * the JSON serialization and the ability to import and export to NDJSON.
  *
  * @module
  */

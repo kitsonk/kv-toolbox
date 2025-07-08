@@ -29,8 +29,6 @@
  * @module
  */
 
-import { estimateSize } from "@deno/kv-utils/estimate-size";
-
 import { BLOB_KEY, BLOB_META_KEY, setBlob } from "./blob_util.ts";
 import { keys } from "./keys.ts";
 
@@ -57,6 +55,26 @@ const MAX_CHECKS = 99;
 const MAX_MUTATIONS = 999;
 const MAX_TOTAL_MUTATION_SIZE_BYTES = 750_000;
 const MAX_TOTAL_KEY_SIZE_BYTES = 75_000;
+
+/**
+ * Estimates the size of a value in bytes, which is used to determine the size of entries being stored in a Deno KV
+ * store.
+ *
+ * This is done this way to make this module loadable in environments where the V8 `serialize` function is not
+ * available, such as a web browser.
+ */
+const estimateSize = await ("Deno" in globalThis || "process" in globalThis
+  ? (async () => {
+    const { serialize } = await import("node:v8");
+    return (value: unknown) => {
+      const buffer = serialize(value);
+      return buffer.byteLength;
+    };
+  })()
+  : (async () => {
+    const { estimateSize } = await import("./estimate_size.ts");
+    return estimateSize;
+  })());
 
 /**
  * The class that encapsulates the batched atomic operations. Works around
