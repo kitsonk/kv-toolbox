@@ -53,14 +53,14 @@ export interface Encryptor {
    * Encrypt the provided message, returning or resolving with the encrypted
    * value.
    */
-  encrypt(message: Uint8Array): Uint8Array | Promise<Uint8Array>;
+  encrypt(message: Uint8Array<ArrayBuffer>): Uint8Array<ArrayBuffer> | Promise<Uint8Array<ArrayBuffer>>;
   /**
    * Decrypt the provided message, returning or resolving with the decrypted
    * value.
    */
   decrypt(
-    message: Uint8Array,
-  ): Uint8Array | undefined | Promise<Uint8Array | undefined>;
+    message: Uint8Array<ArrayBuffer>,
+  ): Uint8Array<ArrayBuffer> | undefined | Promise<Uint8Array<ArrayBuffer> | undefined>;
 }
 
 function isEncryptor(value: unknown): value is Encryptor {
@@ -69,7 +69,7 @@ function isEncryptor(value: unknown): value is Encryptor {
     typeof value.decrypt === "function");
 }
 
-function importKey(key: string | Uint8Array): Promise<CryptoKey> {
+function importKey(key: string | Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   const rawKey = typeof key === "string" ? decodeHex(key) : key;
   return crypto.subtle.importKey(
     "raw",
@@ -109,7 +109,7 @@ function importKey(key: string | Uint8Array): Promise<CryptoKey> {
 export class CryptoKv {
   #cryptoKey?: CryptoKey;
   #kv: Deno.Kv;
-  #key?: string | Uint8Array;
+  #key?: string | Uint8Array<ArrayBuffer>;
   #encryptor?: Encryptor;
 
   async #asBlob(
@@ -117,11 +117,11 @@ export class CryptoKv {
     options: { consistency?: Deno.KvConsistencyLevel },
     meta: BlobMeta,
   ) {
-    let iv: Uint8Array | undefined;
+    let iv: Uint8Array<ArrayBuffer> | undefined;
 
     const decrypt = this.#encryptor
-      ? (chunk: Uint8Array) => this.#encryptor!.decrypt(chunk)
-      : async (chunk: Uint8Array) => {
+      ? (chunk: Uint8Array<ArrayBuffer>) => this.#encryptor!.decrypt(chunk)
+      : async (chunk: Uint8Array<ArrayBuffer>) => {
         if (!iv) {
           assert(chunk.byteLength >= 12);
           iv = chunk.slice(0, 12);
@@ -184,11 +184,11 @@ export class CryptoKv {
   ) {
     if (this.#encryptor) {
       if (ArrayBuffer.isView(blob)) {
-        return this.#encryptor.encrypt(new Uint8Array(blob.buffer));
+        return this.#encryptor.encrypt(new Uint8Array(blob.buffer as ArrayBuffer));
       } else if (
         blob instanceof ArrayBuffer || blob instanceof SharedArrayBuffer
       ) {
-        return this.#encryptor.encrypt(new Uint8Array(blob));
+        return this.#encryptor.encrypt(new Uint8Array(blob as ArrayBuffer));
       } else if (blob instanceof Blob) {
         const buffer = await this.#encryptor.encrypt(
           new Uint8Array(await blob.arrayBuffer()),
@@ -217,7 +217,7 @@ export class CryptoKv {
             await globalThis.crypto.subtle.encrypt(
               { name: "AES-GCM", iv },
               key,
-              blob,
+              blob as ArrayBuffer,
             ),
           ),
         ]);
@@ -254,7 +254,7 @@ export class CryptoKv {
     }
   }
 
-  async #decrypt(blob: Uint8Array) {
+  async #decrypt(blob: Uint8Array<ArrayBuffer>) {
     if (this.#encryptor) {
       return this.#encryptor.decrypt(blob);
     } else {
@@ -273,7 +273,7 @@ export class CryptoKv {
     }
   }
 
-  constructor(kv: Deno.Kv, encryptWith: string | Uint8Array | Encryptor) {
+  constructor(kv: Deno.Kv, encryptWith: string | Uint8Array<ArrayBuffer> | Encryptor) {
     this.#kv = kv;
     if (isEncryptor(encryptWith)) {
       this.#encryptor = encryptWith;
@@ -580,7 +580,7 @@ export function generateKey(bitLength: 128 | 192 | 256 = 256): string {
  * ```
  */
 export async function openCryptoKv(
-  encryptWith: string | Uint8Array | Encryptor,
+  encryptWith: string | Uint8Array<ArrayBuffer> | Encryptor,
   path?: string | undefined,
 ): Promise<CryptoKv> {
   const kv = await Deno.openKv(path);

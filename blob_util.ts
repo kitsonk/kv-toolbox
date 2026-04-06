@@ -148,10 +148,10 @@ export async function asUint8Array(
   kv: Deno.Kv,
   key: Deno.KvKey,
   options: { consistency?: Deno.KvConsistencyLevel | undefined },
-): Promise<Uint8Array | null> {
+): Promise<Uint8Array<ArrayBuffer> | null> {
   const prefix = [...key, BLOB_KEY];
   const prefixLength = prefix.length;
-  const list = kv.list<Uint8Array>({ prefix }, {
+  const list = kv.list<Uint8Array<ArrayBuffer>>({ prefix }, {
     ...options,
     batchSize: BATCH_SIZE,
   });
@@ -187,12 +187,12 @@ export async function asBlob(
 ): Promise<File | Blob | null> {
   const prefix = [...key, BLOB_KEY];
   const prefixLength = prefix.length;
-  const list = kv.list<Uint8Array>({ prefix }, {
+  const list = kv.list<Uint8Array<ArrayBuffer>>({ prefix }, {
     ...options,
     batchSize: BATCH_SIZE,
   });
   let found = false;
-  const parts: Uint8Array[] = [];
+  const parts: Uint8Array<ArrayBuffer>[] = [];
   let i = 1;
   for await (const item of list) {
     if (

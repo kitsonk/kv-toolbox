@@ -1382,7 +1382,7 @@ export class KvToolbox implements Disposable {
  */
 export class CryptoKvToolbox extends KvToolbox {
   #cryptoKv: CryptoKv;
-  constructor(kv: Deno.Kv, encryptWith: string | Uint8Array | Encryptor) {
+  constructor(kv: Deno.Kv, encryptWith: string | Uint8Array<ArrayBuffer> | Encryptor) {
     super(kv);
     this.#cryptoKv = new CryptoKv(kv, encryptWith);
   }
@@ -1842,7 +1842,7 @@ export class CryptoKvToolbox extends KvToolbox {
 export function openKvToolbox(
   options: {
     path?: string | undefined;
-    encryptWith: string | Uint8Array | Encryptor;
+    encryptWith: string | Uint8Array<ArrayBuffer> | Encryptor;
   },
 ): Promise<CryptoKvToolbox>;
 /**
@@ -1868,7 +1868,7 @@ export function openKvToolbox(
 export async function openKvToolbox(
   options?: {
     path?: string | undefined;
-    encryptWith?: string | Uint8Array | Encryptor | undefined;
+    encryptWith?: string | Uint8Array<ArrayBuffer> | Encryptor | undefined;
   },
 ): Promise<KvToolbox | CryptoKvToolbox> {
   const kv = await Deno.openKv(options?.path);

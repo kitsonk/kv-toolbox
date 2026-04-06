@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-import-prefix
 import { assert } from "jsr:@std/assert@~1/assert";
 export { concat } from "jsr:@std/bytes@~1/concat";
 export { delay } from "jsr:@std/async@~1/delay";
