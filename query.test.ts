@@ -740,7 +740,7 @@ Deno.test("KeyFilter.glob() - toJSON / parse round-trip with Uint8Array", () => 
   const json = filter.toJSON();
   const restored = KeyFilter.parse(json);
   assert(restored.test(["x", new Uint8Array([1, 2, 3])]));
-  assert(!restored.test(["x", new Uint8Array([9])]));
+  assert(!restored.test(["x", new Uint8Array([9, 9, 9])]));
 });
 
 Deno.test("KeyFilter.includes() - toJSON / parse round-trip", () => {

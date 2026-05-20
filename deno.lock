@@ -6,7 +6,8 @@
     "jsr:@std/async@1": "1.2.0",
     "jsr:@std/bytes@1": "1.0.6",
     "jsr:@std/bytes@^1.0.3": "1.0.6",
-    "jsr:@std/crypto@1": "1.0.5",
+    "jsr:@std/crypto@1": "1.1.0",
+    "jsr:@std/crypto@1.1": "1.1.0",
     "jsr:@std/encoding@1": "1.0.10",
     "jsr:@std/encoding@^1.0.5": "1.0.10",
     "jsr:@std/internal@^1.0.12": "1.0.12",
@@ -32,8 +33,8 @@
     "@std/bytes@1.0.6": {
       "integrity": "f6ac6adbd8ccd99314045f5703e23af0a68d7f7e58364b47d2c7f408aeb5820a"
     },
-    "@std/crypto@1.0.5": {
-      "integrity": "0dcfbb319fe0bba1bd3af904ceb4f948cde1b92979ec1614528380ed308a3b40"
+    "@std/crypto@1.1.0": {
+      "integrity": "b8d6d0a6377a32b213af2661ed7bf1062d94feac0c57def5526a8e74a95c3ec8"
     },
     "@std/encoding@1.0.10": {
       "integrity": "8783c6384a2d13abd5e9e87a7ae0520a30e9f56aeeaa3bdf910a3eaaf5c811a1"
@@ -50,7 +51,7 @@
       "jsr:@deno/kv-utils@~0.1.4",
       "jsr:@std/assert@1",
       "jsr:@std/bytes@1",
-      "jsr:@std/crypto@1",
+      "jsr:@std/crypto@1.1",
       "jsr:@std/encoding@1",
       "jsr:@std/media-types@1"
     ]
