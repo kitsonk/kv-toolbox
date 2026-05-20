@@ -4,9 +4,20 @@
  * @module
  */
 
-import { keyToJSON, type KvKeyJSON, type KvValueJSON, toKey, toValue, valueToJSON } from "@deno/kv-utils/json";
+import {
+  keyPartToJSON,
+  keyToJSON,
+  type KvKeyJSON,
+  type KvKeyPartJSON,
+  type KvValueJSON,
+  toKey,
+  toKeyPart,
+  toValue,
+  valueToJSON,
+} from "@deno/kv-utils/json";
 import { equal } from "@std/assert/equal";
 import { assert } from "@std/assert/assert";
+import { timingSafeEqual } from "@std/crypto/timing-safe-equal";
 
 import { type BlobMeta, list } from "./blob.ts";
 import { keys, type KeyTree, tree, unique, uniqueCount, type UniqueCountElement } from "./keys.ts";
@@ -137,6 +148,106 @@ export interface KvQueryJSON {
   selector: KvListSelectorJSON;
   options?: Deno.KvListOptions;
   filters: KvFilterJSON[];
+  keyFilters?: KvKeyFilterJSON[];
+}
+
+/**
+ * A sentinel value representing a wildcard position in a {@linkcode KeyGlob}.
+ * Matches any single key part at a given position during key glob matching.
+ *
+ * @example
+ *
+ * ```ts
+ * import { query, wildcard } from "@kitsonk/kv-toolbox/query";
+ *
+ * const db = await Deno.openKv();
+ * const result = query(db, { prefix: [] })
+ *   .keyGlob(["users", wildcard, "logs"])
+ *   .get();
+ * for await (const entry of result) {
+ *   console.log(entry.key);
+ * }
+ * db.close();
+ * ```
+ */
+export const wildcard: unique symbol = Symbol("kv-toolbox.key-wildcard");
+
+/**
+ * The type of the {@linkcode wildcard} sentinel.
+ */
+export type KeyWildcard = typeof wildcard;
+
+/**
+ * A single position in a {@linkcode KeyGlob}. Either a concrete
+ * {@linkcode Deno.KvKeyPart} or the {@linkcode wildcard} sentinel.
+ */
+export type KeyGlobPart = Deno.KvKeyPart | KeyWildcard;
+
+/**
+ * A glob pattern for matching {@linkcode Deno.KvKey}s. An array of
+ * {@linkcode KeyGlobPart} values where {@linkcode wildcard} matches any single
+ * key part at that position. The glob must have exactly the same length as the
+ * key it is matched against.
+ *
+ * @example
+ *
+ * ```ts
+ * import { type KeyGlob, wildcard } from "@kitsonk/kv-toolbox/query";
+ *
+ * const pattern: KeyGlob = ["users", wildcard, "logs"];
+ * ```
+ */
+export type KeyGlob = KeyGlobPart[];
+
+/**
+ * A JSON representation of a wildcard position in a key glob pattern.
+ */
+export interface KvKeyGlobWildcardJSON {
+  type: "wildcard";
+}
+
+/**
+ * A JSON representation of a single position in a {@linkcode KeyGlob}.
+ */
+export type KvKeyGlobPartJSON = KvKeyPartJSON | KvKeyGlobWildcardJSON;
+
+/**
+ * A JSON representation of a key glob filter.
+ */
+export interface KvKeyFilterGlobJSON {
+  kind: "glob";
+  pattern: KvKeyGlobPartJSON[];
+}
+
+/**
+ * A JSON representation of a key includes filter.
+ */
+export interface KvKeyFilterIncludesJSON {
+  kind: "includes";
+  value: KvKeyPartJSON;
+}
+
+/**
+ * A JSON representation of a {@linkcode KeyFilter}.
+ */
+export type KvKeyFilterJSON = KvKeyFilterGlobJSON | KvKeyFilterIncludesJSON;
+
+function partEqualsKeyPart(a: Deno.KvKeyPart, b: Deno.KvKeyPart): boolean {
+  if (ArrayBuffer.isView(a)) {
+    if (!ArrayBuffer.isView(b)) return false;
+    return timingSafeEqual(a as Uint8Array, b as Uint8Array);
+  }
+  return a === b;
+}
+
+function matchesKeyGlob(key: Deno.KvKey, pattern: KeyGlob): boolean {
+  if (key.length !== pattern.length) return false;
+  for (let i = 0; i < pattern.length; i++) {
+    const part = pattern[i];
+    if (part === wildcard) continue;
+    if (!partEqualsKeyPart(key[i], part as Deno.KvKeyPart)) return false;
+  }
+  return true;
 }
 
 function getKind(value: unknown): Kinds {
@@ -806,6 +917,138 @@ export class Filter {
   }
 }
 
+/**
+ * A filter instance which tests a {@linkcode Deno.KvKey} rather than an entry
+ * value. Parallel to {@linkcode Filter} but operates on `entry.key`.
+ *
+ * @example Matching keys by glob pattern
+ *
+ * ```ts
+ * import { KeyFilter, wildcard } from "@kitsonk/kv-toolbox/query";
+ * import { assert } from "@std/assert/assert";
+ *
+ * const filter = KeyFilter.glob(["users", wildcard, "logs"]);
+ * assert(filter.test(["users", "alice", "logs"]));
+ * assert(!filter.test(["users", "alice", "sessions"]));
+ * assert(!filter.test(["users", "logs"]));
+ * ```
+ *
+ * @example Matching keys that include a specific part
+ *
+ * ```ts
+ * import { KeyFilter } from "@kitsonk/kv-toolbox/query";
+ * import { assert } from "@std/assert/assert";
+ *
+ * const filter = KeyFilter.includes("logs");
+ * assert(filter.test(["users", "alice", "logs"]));
+ * assert(filter.test(["logs"]));
+ * assert(!filter.test(["users", "alice", "sessions"]));
+ * ```
+ */
+export class KeyFilter {
+  #kind: "glob" | "includes";
+  #pattern?: KeyGlob;
+  #value?: Deno.KvKeyPart;
+
+  private constructor(kind: "glob", pattern: KeyGlob);
+  private constructor(kind: "includes", value: Deno.KvKeyPart);
+  private constructor(kind: "glob" | "includes", patternOrValue?: KeyGlob | Deno.KvKeyPart) {
+    this.#kind = kind;
+    if (kind === "glob") {
+      this.#pattern = patternOrValue as KeyGlob;
+    } else {
+      this.#value = patternOrValue as Deno.KvKeyPart;
+    }
+  }
+
+  /**
+   * Test the key against this filter.
+   */
+  test(key: Deno.KvKey): boolean {
+    switch (this.#kind) {
+      case "glob":
+        return matchesKeyGlob(key, this.#pattern!);
+      case "includes":
+        return key.some((part) => partEqualsKeyPart(part, this.#value!));
+    }
+  }
+
+  /**
+   * Convert the filter to a JSON object.
+   */
+  toJSON(): KvKeyFilterJSON {
+    switch (this.#kind) {
+      case "glob":
+        return {
+          kind: "glob",
+          pattern: this.#pattern!.map((part): KvKeyGlobPartJSON =>
+            part === wildcard ? { type: "wildcard" } : keyPartToJSON(part as Deno.KvKeyPart)
+          ),
+        };
+      case "includes":
+        return {
+          kind: "includes",
+          value: keyPartToJSON(this.#value!),
+        };
+    }
+  }
+
+  /**
+   * Create a key filter that matches keys whose structure matches the given
+   * glob pattern. Use {@linkcode wildcard} at any position to match any key
+   * part there. The pattern length must equal the key length to match.
+   *
+   * @example
+   *
+   * ```ts
+   * import { KeyFilter, wildcard } from "@kitsonk/kv-toolbox/query";
+   * import { assert } from "@std/assert/assert";
+   *
+   * const filter = KeyFilter.glob(["users", wildcard, "logs"]);
+   * assert(filter.test(["users", "alice", "logs"]));
+   * assert(!filter.test(["users", "alice", "sessions"]));
+   * ```
+   */
+  static glob(pattern: KeyGlob): KeyFilter {
+    return new KeyFilter("glob", pattern);
+  }
+
+  /**
+   * Create a key filter that matches keys containing the given key part at any
+   * position.
+   *
+   * @example
+   *
+   * ```ts
+   * import { KeyFilter } from "@kitsonk/kv-toolbox/query";
+   * import { assert } from "@std/assert/assert";
+   *
+   * const filter = KeyFilter.includes("logs");
+   * assert(filter.test(["users", "alice", "logs"]));
+   * assert(!filter.test(["users", "alice", "sessions"]));
+   * ```
+   */
+  static includes(value: Deno.KvKeyPart): KeyFilter {
+    return new KeyFilter("includes", value);
+  }
+
+  /**
+   * Parse a key filter from its JSON representation.
+   */
+  static parse(json: KvKeyFilterJSON): KeyFilter {
+    switch (json.kind) {
+      case "glob":
+        return KeyFilter.glob(
+          json.pattern.map((part) =>
+            "type" in part && part.type === "wildcard" ? wildcard : toKeyPart(part as KvKeyPartJSON)
+          ),
+        );
+      case "includes":
+        return KeyFilter.includes(toKeyPart(json.value));
+    }
+  }
+}
+
 const AsyncIterator = Object.getPrototypeOf(async function* () {}).constructor;
 
 class QueryListIterator<T = unknown> extends AsyncIterator implements Deno.KvListIterator<T> {
@@ -814,6 +1057,7 @@ class QueryListIterator<T = unknown> extends AsyncIterator implements Deno.KvLis
   #cursor?: string;
   #limit?: number;
   #query: Filter[];
+  #keyQuery: KeyFilter[];
 
   get cursor(): string {
     if (!this.#cursor) {
@@ -826,15 +1070,18 @@ class QueryListIterator<T = unknown> extends AsyncIterator implements Deno.KvLis
     iterator: Deno.KvListIterator<T>,
     query: Filter[],
     limit?: number,
+    keyFilters: KeyFilter[] = [],
   ) {
     super();
     this.#iterator = iterator;
     this.#query = query;
     this.#limit = limit;
+    this.#keyQuery = keyFilters;
   }
 
   async next(): Promise<IteratorResult<Deno.KvEntry<T>, undefined>> {
     for await (const entry of this.#iterator) {
+      if (!this.#keyQuery.every((f) => f.test(entry.key))) continue;
       if (this.#query.every((f) => f.test(entry.value))) {
         this.#count++;
         if (this.#limit && this.#count > this.#limit) {
@@ -861,6 +1108,7 @@ export class Query<T = unknown> implements QueryLike<T> {
   #selector: Deno.KvListSelector;
   #options: QueryOptions;
   #query: Filter[] = [];
+  #keyQuery: KeyFilter[] = [];
 
   /**
    * The selector that is used to query the entries.
@@ -927,7 +1175,60 @@ export class Query<T = unknown> implements QueryLike<T> {
       (isOptionBlob(this.#options)
         ? list(this.#kv, this.#selector, this.#options)
         : this.#kv.list<T>(this.#selector, this.#options)) as Deno.KvListIterator<T>;
-    return new QueryListIterator<T>(iterator, this.#query, this.#limit);
+    return new QueryListIterator<T>(iterator, this.#query, this.#limit, this.#keyQuery);
+  }
+
+  /**
+   * Add a key glob filter to the query. Only entries whose keys match the given
+   * glob pattern will be returned. Multiple calls are ANDed together.
+   *
+   * Use {@linkcode wildcard} at any position to match any key part there. The
+   * pattern length must match the key length exactly.
+   *
+   * @example
+   *
+   * ```ts
+   * import { query, wildcard } from "@kitsonk/kv-toolbox/query";
+   *
+   * const db = await Deno.openKv();
+   * // Returns all entries where key is ["users", <any>, "logs"]
+   * const result = query(db, { prefix: [] })
+   *   .keyGlob(["users", wildcard, "logs"])
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry.key);
+   * }
+   * db.close();
+   * ```
+   */
+  keyGlob(pattern: KeyGlob): this {
+    this.#keyQuery.push(KeyFilter.glob(pattern));
+    return this;
+  }
+
+  /**
+   * Add a key includes filter to the query. Only entries whose keys contain the
+   * given key part at any position will be returned. Multiple calls are ANDed.
+   *
+   * @example
+   *
+   * ```ts
+   * import { query } from "@kitsonk/kv-toolbox/query";
+   *
+   * const db = await Deno.openKv();
+   * // Returns all entries whose key contains "logs" at any position
+   * const result = query(db, { prefix: [] })
+   *   .keyIncludes("logs")
+   *   .get();
+   * for await (const entry of result) {
+   *   console.log(entry.key);
+   * }
+   * db.close();
+   * ```
+   */
+  keyIncludes(value: Deno.KvKeyPart): this {
+    this.#keyQuery.push(KeyFilter.includes(value));
+    return this;
   }
 
   /**
@@ -1265,20 +1566,25 @@ export class Query<T = unknown> implements QueryLike<T> {
    * Convert the query to a JSON object.
    */
   toJSON(): KvQueryJSON {
-    return {
+    const json: KvQueryJSON = {
       selector: selectorToJSON(this.#selector),
       options: this.#options,
       filters: this.#query.map((f) => f.toJSON()),
     };
+    if (this.#keyQuery.length > 0) {
+      json.keyFilters = this.#keyQuery.map((f) => f.toJSON());
+    }
+    return json;
   }
 
   /**
    * Parse a query from an instance of {@linkcode Deno.Kv} and a JSON object.
    */
   static parse<T = unknown>(kv: Deno.Kv, json: KvQueryJSON): Query<T> {
-    const query = new Query<T>(kv, toSelector(json.selector), json.options);
-    query.#query = json.filters.map(Filter.parse);
-    return query;
+    const q = new Query<T>(kv, toSelector(json.selector), json.options);
+    q.#query = json.filters.map(Filter.parse);
+    q.#keyQuery = (json.keyFilters ?? []).map(KeyFilter.parse);
+    return q;
   }
 }
 

@@ -4,7 +4,7 @@ import { assertThrows } from "@std/assert/throws";
 import { timingSafeEqual } from "@std/crypto/timing-safe-equal";
 
 import { set } from "./blob.ts";
-import { Filter, PropertyPath, Query, query } from "./query.ts";
+import { Filter, KeyFilter, PropertyPath, Query, query, wildcard } from "./query.ts";
 
 Deno.test("PropertyPath - exists", () => {
   const path = new PropertyPath("a", "b", "c");
@@ -661,4 +661,223 @@ Deno.test({
     }
     kv.close();
   },
+});
+
+// KeyFilter unit tests
+
+Deno.test("KeyFilter.glob() - exact match, no wildcards", () => {
+  const filter = KeyFilter.glob(["users", "alice"]);
+  assert(filter.test(["users", "alice"]));
+  assert(!filter.test(["users", "bob"]));
+  assert(!filter.test(["users"]));
+  assert(!filter.test(["users", "alice", "extra"]));
+});
+
+Deno.test("KeyFilter.glob() - single wildcard", () => {
+  const filter = KeyFilter.glob(["users", wildcard, "logs"]);
+  assert(filter.test(["users", "alice", "logs"]));
+  assert(filter.test(["users", "bob", "logs"]));
+  assert(!filter.test(["users", "alice", "sessions"]));
+  assert(!filter.test(["users", "logs"]));
+  assert(!filter.test(["users", "alice", "logs", "x"]));
+});
+
+Deno.test("KeyFilter.glob() - multiple wildcards", () => {
+  const filter = KeyFilter.glob([wildcard, wildcard]);
+  assert(filter.test(["a", "b"]));
+  assert(filter.test([1, 2]));
+  assert(!filter.test(["a"]));
+  assert(!filter.test(["a", "b", "c"]));
+});
+
+Deno.test("KeyFilter.glob() - Uint8Array part", () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  const filter = KeyFilter.glob(["prefix", bytes]);
+  assert(filter.test(["prefix", new Uint8Array([1, 2, 3])]));
+  assert(!filter.test(["prefix", new Uint8Array([1, 2, 4])]));
+  assert(!filter.test(["prefix", "123"]));
+});
+
+Deno.test("KeyFilter.glob() - wildcard matches any type", () => {
+  const filter = KeyFilter.glob([wildcard]);
+  assert(filter.test(["string"]));
+  assert(filter.test([42]));
+  assert(filter.test([true]));
+  assert(filter.test([99n]));
+  assert(filter.test([new Uint8Array([1])]));
+});
+
+Deno.test("KeyFilter.includes() - string part anywhere in key", () => {
+  const filter = KeyFilter.includes("logs");
+  assert(filter.test(["logs"]));
+  assert(filter.test(["users", "logs"]));
+  assert(filter.test(["users", "alice", "logs"]));
+  assert(!filter.test(["users", "sessions"]));
+  assert(!filter.test([]));
+});
+
+Deno.test("KeyFilter.includes() - Uint8Array part", () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  const filter = KeyFilter.includes(bytes);
+  assert(filter.test(["prefix", new Uint8Array([1, 2, 3])]));
+  assert(filter.test([new Uint8Array([1, 2, 3]), "suffix"]));
+  assert(!filter.test(["prefix", new Uint8Array([1, 2, 4])]));
+});
+
+Deno.test("KeyFilter.glob() - toJSON / parse round-trip", () => {
+  const filter = KeyFilter.glob(["users", wildcard, "logs"]);
+  const json = filter.toJSON();
+  assertEquals(json.kind, "glob");
+  const restored = KeyFilter.parse(json);
+  assert(restored.test(["users", "alice", "logs"]));
+  assert(!restored.test(["users", "alice", "sessions"]));
+  assert(!restored.test(["users", "logs"]));
+});
+
+Deno.test("KeyFilter.glob() - toJSON / parse round-trip with Uint8Array", () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  const filter = KeyFilter.glob([wildcard, bytes]);
+  const json = filter.toJSON();
+  const restored = KeyFilter.parse(json);
+  assert(restored.test(["x", new Uint8Array([1, 2, 3])]));
+  assert(!restored.test(["x", new Uint8Array([9])]));
+});
+
+Deno.test("KeyFilter.includes() - toJSON / parse round-trip", () => {
+  const filter = KeyFilter.includes("logs");
+  const json = filter.toJSON();
+  assertEquals(json.kind, "includes");
+  const restored = KeyFilter.parse(json);
+  assert(restored.test(["a", "logs", "b"]));
+  assert(!restored.test(["a", "b"]));
+});
+
+// Query integration tests for key filtering
+
+Deno.test("query - keyGlob", async () => {
+  const kv = await Deno.openKv(":memory:");
+  await kv.atomic()
+    .set(["users", "alice", "logs"], { action: "login" })
+    .set(["users", "alice", "sessions"], { token: "abc" })
+    .set(["users", "bob", "logs"], { action: "login" })
+    .set(["metrics", "cpu"], { value: 0.5 })
+    .commit();
+  const result = await query(kv, { prefix: [] })
+    .keyGlob(["users", wildcard, "logs"])
+    .keys();
+  assertEquals(result, [["users", "alice", "logs"], ["users", "bob", "logs"]]);
+  kv.close();
+});
+
+Deno.test("query - keyIncludes", async () => {
+  const kv = await Deno.openKv(":memory:");
+  await kv.atomic()
+    .set(["users", "alice", "logs"], { action: "login" })
+    .set(["users", "alice", "sessions"], { token: "abc" })
+    .set(["metrics", "logs"], { count: 10 })
+    .commit();
+  const result = await query(kv, { prefix: [] })
+    .keyIncludes("logs")
+    .keys();
+  assertEquals(result, [["metrics", "logs"], ["users", "alice", "logs"]]);
+  kv.close();
+});
+
+Deno.test("query - multiple keyGlob calls are ANDed", async () => {
+  const kv = await Deno.openKv(":memory:");
+  await kv.atomic()
+    .set(["users", "alice", "logs"], { action: "login" })
+    .set(["users", "bob", "logs"], { action: "login" })
+    .set(["users", "alice", "sessions"], { token: "abc" })
+    .commit();
+  const result = await query(kv, { prefix: [] })
+    .keyGlob(["users", wildcard, "logs"])
+    .keyGlob([wildcard, "alice", wildcard])
+    .keys();
+  assertEquals(result, [["users", "alice", "logs"]]);
+  kv.close();
+});
+
+Deno.test("query - keyGlob combined with where", async () => {
+  const kv = await Deno.openKv(":memory:");
+  await kv.atomic()
+    .set(["users", "alice", "logs"], { action: "login" })
+    .set(["users", "bob", "logs"], { action: "logout" })
+    .commit();
+  const result = await query(kv, { prefix: [] })
+    .keyGlob(["users", wildcard, "logs"])
+    .where("action", "==", "login")
+    .keys();
+  assertEquals(result, [["users", "alice", "logs"]]);
+  kv.close();
+});
+
+Deno.test("query - keyGlob combined with keyIncludes", async () => {
+  const kv = await Deno.openKv(":memory:");
+  await kv.atomic()
+    .set(["users", "alice", "logs"], { action: "login" })
+    .set(["users", "alice", "sessions"], { token: "abc" })
+    .set(["logs", "global"], { action: "boot" })
+    .commit();
+  const result = await query(kv, { prefix: [] })
+    .keyGlob([wildcard, wildcard, wildcard])
+    .keyIncludes("logs")
+    .keys();
+  assertEquals(result, [["users", "alice", "logs"]]);
+  kv.close();
+});
+
+Deno.test("query - toJSON includes keyFilters when present", async () => {
+  const kv = await Deno.openKv(":memory:");
+  const json = query(kv, { prefix: ["users"] })
+    .keyGlob(["users", wildcard, "logs"])
+    .toJSON();
+  assert("keyFilters" in json);
+  assertEquals(json.keyFilters!.length, 1);
+  assertEquals(json.keyFilters![0].kind, "glob");
+  kv.close();
+});
+
+Deno.test("query - toJSON omits keyFilters when empty", async () => {
+  const kv = await Deno.openKv(":memory:");
+  const json = query(kv, { prefix: [] })
+    .where("x", "==", 1)
+    .toJSON();
+  assert(!("keyFilters" in json));
+  kv.close();
+});
+
+Deno.test("query - Query.parse() with keyFilters", async () => {
+  const kv = await Deno.openKv(":memory:");
+  await kv.atomic()
+    .set(["users", "alice", "logs"], { action: "login" })
+    .set(["users", "bob", "sessions"], { token: "abc" })
+    .commit();
+  const q = Query.parse(kv, {
+    selector: { prefix: [] },
+    filters: [],
+    keyFilters: [{
+      kind: "glob",
+      pattern: [
+        { type: "string", value: "users" },
+        { type: "wildcard" },
+        { type: "string", value: "logs" },
+      ],
+    }],
+  });
+  const result = await q.keys();
+  assertEquals(result, [["users", "alice", "logs"]]);
+  kv.close();
+});
+
+Deno.test("query - Query.parse() without keyFilters is backward compatible", async () => {
+  const kv = await Deno.openKv(":memory:");
+  await kv.atomic().set(["a"], { x: 1 }).commit();
+  const q = Query.parse(kv, {
+    selector: { prefix: [] },
+    filters: [],
+  });
+  const result = await q.keys();
+  assertEquals(result, [["a"]]);
+  kv.close();
 });
