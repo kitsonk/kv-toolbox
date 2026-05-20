@@ -1,5 +1,11 @@
 # kv-toolbox change log
 
+## Version 0.31.0
+
+- feat: add key-based filtering to Query API (7095ff1)
+- fix: types to work with current Deno (8584bf5)
+- chore: update std libraries (d82debb)
+
 ## Version 0.30.0
 
 - fix: allow batch_atomic to load in browsers (73bed39)
